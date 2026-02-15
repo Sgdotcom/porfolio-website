@@ -1,0 +1,21 @@
+.DS_Store
+node_modules
+.history/
+*.mp4
+# Python venv
+.venv*
+venv/
+env/
+
+# Python packages
+site-packages/
+
+# ML models
+*.onnx
+
+# Compiled libs
+*.so
+*.dylib
+
+# macOS
+.DS_Store
