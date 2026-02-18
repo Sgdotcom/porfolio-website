@@ -1,4 +1,3 @@
-/* Existing CSS rules... */
+/* Original CSS before hide-on-home styles */
 
-img[data-hide-on-home="true"], video[data-hide-on-home="true"] { display: none; }
-body.project-open img[data-hide-on-home="true"], body.project-open video[data-hide-on-home="true"] { display: block; }
+/* Add your original CSS styles here */
