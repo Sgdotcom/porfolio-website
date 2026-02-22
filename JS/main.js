@@ -1,38 +1,17 @@
 /* ==========================================================================
-   1. CUSTOM ELEMENTS
-   ========================================================================== */
-class DigitalClock extends HTMLElement {
-  connectedCallback() {
-    this.update();
-    this.timer = setInterval(() => this.update(), 1000);
-  }
-  disconnectedCallback() {
-    clearInterval(this.timer);
-  }
-  update() {
-    const now = new Date();
-    const options = {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-    };
-    this.textContent = now.toLocaleString('en-GB', options);
-  }
-}
-customElements.define('digital-clock', DigitalClock);
-
-/* ==========================================================================
    2. GLOBAL UTILITIES
    ========================================================================== */
 window.toggleDescription = function (btn) {
-  const container = btn.parentElement;
-  const content = container.querySelector('.info-collapsible');
+  const container = btn.closest('.detail-col');
+  if (!container) return;
+  const content = container.querySelector('.detail-text');
 
   if (content) {
-    if (content.style.display === "block") {
-      content.style.display = "none";
+    if (content.classList.contains('expanded')) {
+      content.classList.remove('expanded');
       btn.innerHTML = "Show More +";
     } else {
-      content.style.display = "block";
+      content.classList.add('expanded');
       btn.innerHTML = "Show Less -";
     }
   }
@@ -56,8 +35,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const media = entry.target;
         if (media.dataset.width) applyItemWidth(media);
         if (media.tagName === 'IMG') {
-          media.src = media.dataset.src;
           media.onload = () => media.classList.add('loaded');
+          media.onerror = () => media.classList.add('loaded');
+          media.src = media.dataset.src;
+          if (media.complete && media.naturalHeight !== 0) {
+            media.classList.add('loaded');
+          }
         }
         if (media.tagName === 'VIDEO') {
           media.src = media.dataset.src;
@@ -524,6 +507,25 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- B. SIDEBAR & NAVIGATION (BACK TO HOME LOGIC) ----------------------
 
   const rightSide = document.getElementById('right-side');
+
+  if (rightSide) {
+    rightSide.addEventListener('click', (e) => {
+      // For homepage feed, make H2 titles clickable to open the project view
+      if (e.target.tagName === 'H2' && e.target.closest('.project-layout') && e.target.closest('.home-project-section')) {
+        const projectSection = e.target.closest('.home-project-section');
+        if (projectSection) {
+          const templateId = projectSection.getAttribute('data-template-id');
+          if (templateId) {
+            const projectLink = document.querySelector(`.project-wrapper a[data-template="${templateId}"]`);
+            if (projectLink) {
+              projectLink.click();
+            }
+          }
+        }
+      }
+    });
+  }
+
   const nameElement = document.querySelector('.name');
   const projectLinks = document.querySelectorAll('.project-wrapper a[data-template]');
   let homepageFeedObserver = null;
@@ -666,8 +668,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (btn) btn.textContent = "Show More +";
 
       const hiddenContent = wrapper.querySelector('.info-collapsible');
-      // Fix: clear inline display style so CSS takes over
-      if (hiddenContent) hiddenContent.style.display = '';
+      if (hiddenContent) {
+        hiddenContent.classList.remove('expanded');
+        hiddenContent.style.display = ''; // Clear any legacy inline styles
+      }
     });
   }
 
@@ -831,6 +835,7 @@ document.addEventListener('DOMContentLoaded', () => {
           wrapper.appendChild(inlineContainer);
           activateLazyLoad(inlineContainer);
           enablePhotoReorder(inlineContainer);
+          enableTextEditing(inlineContainer);
           requestAnimationFrame(() => inlineContainer.style.opacity = "1");
 
         } else {
@@ -848,6 +853,7 @@ document.addEventListener('DOMContentLoaded', () => {
             rightSide.appendChild(contentWrapper);
             activateLazyLoad(contentWrapper);
             enablePhotoReorder(contentWrapper);
+            enableTextEditing(contentWrapper);
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
             setTimeout(() => contentWrapper.classList.add('visible'), 10);
@@ -871,6 +877,25 @@ document.addEventListener('DOMContentLoaded', () => {
   // 1. Open Lightbox
   document.addEventListener('click', (e) => {
     if (reorderEnabled) return;
+
+    // Carousel Click-to-Scroll Logic
+    const carousel = e.target.closest('.carousel');
+    if (carousel) {
+      const rect = carousel.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const width = rect.width;
+
+      // Left 35% -> Scroll Left
+      if (x < width * 0.35) {
+        carousel.scrollBy({ left: -width * 0.6, behavior: 'smooth' });
+        return;
+      }
+      // Right 35% -> Scroll Right
+      else if (x > width * 0.65) {
+        carousel.scrollBy({ left: width * 0.6, behavior: 'smooth' });
+        return;
+      }
+    }
 
     if (e.target.tagName === 'IMG') {
       const container = e.target.closest('.temp-grid') ||
@@ -933,5 +958,70 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'ArrowRight') showNext();
     if (e.key === 'ArrowLeft') showPrev();
   });
+
+  function enableTextEditing(container) {
+    if (!reorderEnabled || !container) return;
+
+    const editables = container.querySelectorAll('h2, .summary-col p, .detail-text p, .detail-text, h3, h4, li, .about-text p');
+    editables.forEach(el => {
+      el.setAttribute('contenteditable', 'true');
+      el.style.outline = '1px dashed #ccc';
+      el.style.minWidth = '10px';
+      el.addEventListener('focus', () => el.style.outline = '1px solid blue');
+      el.addEventListener('blur', () => el.style.outline = '1px dashed #ccc');
+    });
+
+    if (!document.getElementById('global-export-btn')) {
+      const btn = document.createElement('button');
+      btn.id = 'global-export-btn';
+      btn.textContent = 'EXPORT PROJECT HTML';
+      Object.assign(btn.style, {
+        position: 'fixed', bottom: '20px', right: '20px', zIndex: 100000,
+        padding: '10px 20px', background: 'blue', color: 'white',
+        border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold'
+      });
+      document.body.appendChild(btn);
+
+      btn.addEventListener('click', () => {
+        const activeContainer = document.querySelector('.content-enter') || document.querySelector('.mobile-content-inject');
+        if (!activeContainer) return alert('No active project found.');
+
+        const clone = activeContainer.cloneNode(true);
+        clone.querySelectorAll('[contenteditable]').forEach(el => {
+          el.removeAttribute('contenteditable');
+          el.removeAttribute('style');
+        });
+
+        clone.querySelectorAll('.photo-edit-controls, .reorder-export-btn, .photo-resize-handle').forEach(el => el.remove());
+
+        let html = clone.innerHTML;
+
+        const modal = document.createElement('div');
+        Object.assign(modal.style, {
+          position: 'fixed', top: '0', left: '0', width: '100%', height: '100%',
+          background: 'rgba(0,0,0,0.8)', zIndex: 100001, display: 'flex',
+          alignItems: 'center', justifyContent: 'center'
+        });
+
+        const textarea = document.createElement('textarea');
+        textarea.value = html.trim();
+        Object.assign(textarea.style, {
+          width: '80%', height: '80%', fontFamily: 'monospace', fontSize: '12px', padding: '10px'
+        });
+
+        const close = document.createElement('button');
+        close.textContent = 'CLOSE';
+        Object.assign(close.style, {
+          position: 'absolute', top: '20px', right: '20px', padding: '10px',
+          background: 'white', border: 'none', cursor: 'pointer'
+        });
+        close.onclick = () => modal.remove();
+
+        modal.appendChild(textarea);
+        modal.appendChild(close);
+        document.body.appendChild(modal);
+      });
+    }
+  }
 
 });

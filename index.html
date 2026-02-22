@@ -8,6 +8,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="css/style.css">
   <script src="JS/main.js" defer></script>
+  <style>
+    .project-layout h2 {
+      font-weight: normal;
+      text-transform: uppercase;
+    }
+  </style>
 </head>
 
 <body>
@@ -19,7 +25,7 @@
 
     <div class="right">
       <button id="dark-toggle" aria-label="Toggle dark mode">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
           stroke-linecap="round" stroke-linejoin="round">
           <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
           <line x1="12" y1="4" x2="12" y2="12"></line>
@@ -40,7 +46,6 @@
   </header>
 
   <main id="top" class="split-layout">
-    <digital-clock class="timestamp"></digital-clock>
 
     <aside class="static-left">
       <h1 class="name">
@@ -121,7 +126,7 @@
         </div>
 
         <div class="project-wrapper">
-          <a href="#" data-template="content-dialogue" data-image="assets/home/diagloguesma.mp4">
+          <a href="#" data-template="content-dialogue" data-image="assets/dialogue/dialogue documentation-16.webp">
             → DIALOGUE – EDITORIAL DESIGN
           </a>
           <div class="project-text">
@@ -138,7 +143,7 @@
     </aside>
 
     <div class="home-hero">
-      <img src="assets/home/me.website2.png" alt="Homepage hero image">
+      <video src="assets/Timeline 1.webm" autoplay loop muted playsinline></video>
     </div>
 
     <section class="scrolling-right" id="right-side">
@@ -147,7 +152,8 @@
   </main>
 
   <footer class="site-bottom" aria-label="Site footer">
-    <p class="copyright">© 2026 Simon Grey. All rights reserved.</p>
+    <p class="copyright">© 2026 Simon Grey. All rights reserved. <a href="?edit=1"
+        style="color:inherit; text-decoration:none; margin-left:10px; opacity:0.5;">Edit</a></p>
     <p class="wip-repeat" data-phrase="where do i go from here?">where do i go from here?</p>
   </footer>
 
@@ -155,48 +161,51 @@
     <div class="project-layout">
       <h2>Photography Selection</h2>
 
-      <button class="toggle-btn" onclick="toggleDescription(this)">Show More +</button>
-
-      <div class="info-collapsible">
-        <p class="summary-text">
-          A selection of works 2023-2024.
-        </p>
-        <p class="detail-text">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor 
-          incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud 
-          exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-        </p>
+      <div class="project-info-grid">
+        <div class="summary-col">
+          <p>Stockholm, Paris, Copenhagen, Los Angeles, Joshua Tree National Park, Gagnef<br>
+            2018-2025<br>
+            Shot and edited by Simon Grey</p>
+        </div>
+        <div class="detail-col">
+          <div class="detail-text">
+            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
+              incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud
+              exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+          </div>
+          <button class="toggle-btn" onclick="toggleDescription(this)">Show More +</button>
+        </div>
       </div>
-    
+
       <div class="photo-stack" data-sort-key="content-photography">
-<img data-src="assets/photography/IMG_8159.webp">
-<img data-src="assets/photography/portfolioimages-10.webp">
-<img data-src="assets/photography/portfolioimages-01.webp">
-<img data-src="assets/photography/portfolioimages-02.webp">
-<img data-src="assets/photography/portfolioimages-03.webp">
-<img data-src="assets/photography/portfolioimages-04.webp">
-<img data-src="assets/photography/portfolioimages-15.webp">
-<img data-src="assets/photography/portfolioimages-06.webp">
-<img data-src="assets/photography/portfolioimages-07.webp">
-<img data-src="assets/photography/portfolioimages-08.webp">
-<img data-src="assets/photography/IMG_7346.webp">
-<img data-src="assets/photography/portfolioimages-11.webp">
-<img data-src="assets/photography/portfolioimages-32.webp">
-<img data-src="assets/photography/portfolioimages-12.webp">
-<img data-src="assets/photography/portfolioimages-13.webp">
-<img data-src="assets/photography/portfolioimages-05.webp">
-<img data-src="assets/photography/portfolioimages-14.webp">
-<img data-src="assets/photography/portfolioimages-16.webp">
-<img data-src="assets/photography/portfolioimages-09.webp">
-<img data-src="assets/photography/portfolioimages-33.webp">
-<img data-src="assets/photography/portfolioimages-34.webp">
-<img data-src="assets/photography/portfolioimages-35.webp">
-<img data-src="assets/photography/portfolioimages-36.webp">
-<img data-src="assets/photography/portfolioimages-37.webp">
-<img data-src="assets/photography/portfolioimages-38.webp">
-<img data-src="assets/photography/R1-02565-0030.webp">
-<img data-src="assets/photography/R1-05791-0027.JPG.webp">
-<img data-src="assets/photography/R1-06501-0028.webp">
+        <img loading="lazy" data-src="assets/photography/IMG_8159.webp">
+        <img loading="lazy" data-src="assets/photography/portfolioimages-10.webp">
+        <img loading="lazy" data-src="assets/photography/portfolioimages-01.webp">
+        <img loading="lazy" data-src="assets/photography/portfolioimages-02.webp">
+        <img loading="lazy" data-src="assets/photography/portfolioimages-03.webp">
+        <img loading="lazy" data-src="assets/photography/portfolioimages-04.webp">
+        <img loading="lazy" data-src="assets/photography/portfolioimages-15.webp">
+        <img loading="lazy" data-src="assets/photography/portfolioimages-06.webp">
+        <img loading="lazy" data-src="assets/photography/portfolioimages-07.webp">
+        <img loading="lazy" data-src="assets/photography/portfolioimages-08.webp">
+        <img loading="lazy" data-src="assets/photography/IMG_7346.webp">
+        <img loading="lazy" class="hide-on-home" data-src="assets/photography/portfolioimages-11.webp">
+        <img loading="lazy" class="hide-on-home" data-src="assets/photography/portfolioimages-32.webp">
+        <img loading="lazy" class="hide-on-home" data-src="assets/photography/portfolioimages-12.webp">
+        <img loading="lazy" class="hide-on-home" data-src="assets/photography/portfolioimages-13.webp">
+        <img loading="lazy" class="hide-on-home" data-src="assets/photography/portfolioimages-05.webp">
+        <img loading="lazy" class="hide-on-home" data-src="assets/photography/portfolioimages-14.webp">
+        <img loading="lazy" class="hide-on-home" data-src="assets/photography/portfolioimages-16.webp">
+        <img loading="lazy" class="hide-on-home" data-src="assets/photography/portfolioimages-09.webp">
+        <img loading="lazy" class="hide-on-home" data-src="assets/photography/portfolioimages-33.webp">
+        <img loading="lazy" class="hide-on-home" data-src="assets/photography/portfolioimages-34.webp">
+        <img loading="lazy" class="hide-on-home" data-src="assets/photography/portfolioimages-35.webp">
+        <img loading="lazy" class="hide-on-home" data-src="assets/photography/portfolioimages-36.webp">
+        <img loading="lazy" class="hide-on-home" data-src="assets/photography/portfolioimages-37.webp">
+        <img loading="lazy" class="hide-on-home" data-src="assets/photography/portfolioimages-38.webp">
+        <img loading="lazy" data-src="assets/photography/R1-02565-0030.webp">
+        <img loading="lazy" data-src="assets/photography/R1-05791-0027.JPG.webp">
+        <img loading="lazy" data-src="assets/photography/R1-06501-0028.webp">
       </div>
     </div>
   </template>
@@ -204,20 +213,41 @@
   <template id="content-field-day">
     <div class="project-layout">
       <h2>Field Day</h2>
-      <button class="toggle-btn" onclick="toggleDescription(this)">Show More +</button>
-      
-      <div class="info-collapsible">
-        <div class="project-info">
-          <p class="summary">3D Motion Graphics & Sound Design</p>
-          <p>A visual exploration of texture and sound.</p>
+
+      <div class="project-info-grid">
+        <div class="summary-col">
+          <p>Unknown<br>
+            April 2024<br>
+            Music by Erasmus Talbot<br>
+            Video by Simon Grey<br>
+            Blender</p>
+        </div>
+        <div class="detail-col">
+          <div class="detail-text">
+            <p>This project was developed as part of Sound & Visions, an audiovisual collaboration between students from
+              the Royal College of Music (KMH) and Beckmans College of Design. The task was to create a motion graphics
+              piece for approximately 60 seconds of original music, working closely with an assigned musician as an
+              external collaborator.
+              The visual concept was shaped through dialogue with the musician and close listening to the composition,
+              translating rhythm, structure, and atmosphere into a coherent moving image language. A methodical process
+              involving storyboards, moodboards, and treatments supported the transition from concept to execution.
+              The animation was produced using Blender, incorporating digital 3D workflows such as modeling, lighting,
+              texturing, and rendering to construct a spatial and time-based visual response to the music. Motion,
+              pacing, and visual transitions were developed in direct relation to the composition’s dynamics.
+              The final video was exported in both horizontal (16:9) and vertical (9:16) formats, adapting the visual
+              system to different viewing contexts while maintaining conceptual and visual consistency. The project
+              demonstrates an approach to motion graphics that balances collaboration, technical execution, and
+              audiovisual storytelling.</p>
+          </div>
+          <button class="toggle-btn" onclick="toggleDescription(this)">Show More +</button>
         </div>
       </div>
-      
+
       <div class="video-embed">
         <iframe
           src="https://player.vimeo.com/video/1072799804?h=d5923bb937&autoplay=1&muted=1&title=0&byline=0&portrait=0"
-          frameborder="0"
-          allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" allowfullscreen>
+          frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share"
+          allowfullscreen>
         </iframe>
       </div>
     </div>
@@ -226,25 +256,122 @@
   <template id="content-cheiron">
     <div class="project-layout">
       <h2>Cheiron Typeface</h2>
-      <button class="toggle-btn" onclick="toggleDescription(this)">Show More +</button>
-      <div class="info-collapsible">
-        <p>Details about the typeface design...</p>
+      <div class="project-info-grid">
+        <div class="summary-col">
+          <p>Stockholm, Sweden<br>
+            October-November 2025<br>
+            Typeface Design (Glyphs), Screen Print, Indesign</p>
+        </div>
+        <div class="detail-col">
+          <div class="detail-text">
+            <p>This project explores the rebranding of Cheiron Studios, a Stockholm-based music studio that played a
+              defining role in late-1990s and early-2000s global pop production, but no longer exists today. The graphic
+              identity is approached as a historical trace—shaped by a specific cultural moment, local context, and
+              global influence—while being reimagined to function across contemporary formats and applications.
+              Research focused on Cheiron Studio's role within the music industry of its era, where highly polished pop
+              music was produced through efficient and collaborative studio processes. This context informed an identity
+              rooted in late-90s production culture, balancing precision, repetition, and speed. The project builds on
+              the idea of design as sampling, where existing visual systems are reinterpreted and repositioned rather
+              than created from scratch.
+              Typography functions as the core carrier of the identity. A custom stencil-based typeface was developed
+              without enclosed counters, allowing it to be used directly as a physical stencil for fast, repeatable
+              branding. The typeface references both studio production workflows and utilitarian marking systems,
+              bridging conceptual intent and practical use.
+              The identity was applied to printed workwear and showcased in a vernissage, where the garments functioned
+              as both graphic carriers and exhibition objects. Through these applications, the project explores the
+              balance between simplicity and complexity, resulting in a restrained yet flexible system that connects
+              Cheiron Studio's historical impact with a future-oriented graphic language.</p>
+          </div>
+          <button class="toggle-btn" onclick="toggleDescription(this)">Show More +</button>
+        </div>
       </div>
-      <img data-src="assets/cheiron-specimen.jpg">
+      <div class="photo-stack" data-sort-key="content-cheiron">
+        <video src="assets/cheiron/CHEIRON.mov" autoplay loop muted playsinline></video>
+        <img loading="lazy" data-src="assets/cheiron/123A0422_J.jpg">
+        <img loading="lazy" data-src="assets/cheiron/123A0423.jpg">
+        <img loading="lazy" data-src="assets/cheiron/123A0537_J.jpg">
+        <img loading="lazy" data-src="assets/cheiron/123A0539_J.jpg">
+        <img loading="lazy" data-src="assets/cheiron/CHEIRON LOGO.white on black.png">
+        <img loading="lazy" data-src="assets/cheiron/CHEIRON LOGOtransparent.png">
+        <img loading="lazy" data-src="assets/cheiron/IMG_0656.jpg">
+        <img loading="lazy" data-src="assets/cheiron/IMG_0722.jpg">
+      </div>
     </div>
   </template>
 
   <template id="content-plattan">
     <div class="project-layout">
       <h2>Plattan Photobook</h2>
-      <button class="toggle-btn" onclick="toggleDescription(this)">Show More +</button>
-      <div class="info-collapsible">
-        <p>Editorial design work...</p>
+      <div class="project-info-grid">
+        <div class="summary-col">
+          <p>Photo book documenting the cultural significance of Sergels Torg aka "Plattan" in Stockholm, Sweden. In
+            collaboration with Lovisa Åkerblom.</p>
+        </div>
+        <div class="detail-col">
+          <div class="detail-text">
+            <p>This project presents a curated image series documenting Sergels Torg “Plattan” in central Stockholm,
+              combining sourced archival photos with photographs captured on site. The work explores the public square
+              as a
+              layered social and architectural space, reflecting its historical, cultural, and urban context.
+              The series was conceived as a book, emphasizing sequencing, scale, and relationships between images to
+              create
+              a coherent narrative of the square. Images are positioned to highlight contrasts between everyday
+              activity,
+              urban architecture, and ephemeral moments of movement, allowing the cityscape to function as both subject
+              and lens.
+              Editorial decisions guided the project's form: selection, cropping, and arrangement were carefully
+              considered
+              to balance continuity and variation, while integrating historical references alongside contemporary
+              observations. The resulting book presents Plattan not just as a physical location but as a living archive
+              of
+              human interaction and urban life.</p>
+          </div>
+          <button class="toggle-btn" onclick="toggleDescription(this)">Show More +</button>
+        </div>
       </div>
-      
+
       <div class="grid-2-col">
-        <img data-src="assets/plattan-1.jpg">
-        <img data-src="assets/plattan-2.jpg">
+        <img loading="lazy" data-src="assets/100bilder/Studio Session-035.webp">
+        <img loading="lazy" data-src="assets/100bilder/Studio Session-037.webp">
+        <img loading="lazy" data-src="assets/100bilder/Studio Session-047.webp">
+        <img loading="lazy" data-src="assets/100bilder/Studio Session-092.webp">
+      </div>
+      <div class="carousel photo-stack hide-on-home">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_01_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_02_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_03_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_04_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_05_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_06_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_07_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_08_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_09_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_10_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_11_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_12_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_13_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_14_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_15_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_16_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_17_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_18_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_19_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_20_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_21_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_22_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_23_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_24_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_25_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_26_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_27_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_28_Image_0001.webp">
+        <img loading="lazy" data-src="assets/100bilder/front 2_Page_29_Image_0001.webp">
+      </div>
+      <div class="grid-2-col">
+        <img loading="lazy" data-src="assets/100bilder/Studio Session-109.webp">
+        <img loading="lazy" data-src="assets/100bilder/Studio Session-115.webp">
+        <img loading="lazy" data-src="assets/100bilder/Studio Session-125.webp">
+        <img loading="lazy" data-src="assets/100bilder/Studio Session-131.webp">
       </div>
     </div>
   </template>
@@ -252,9 +379,16 @@
   <template id="content-video">
     <div class="project-layout">
       <h2>Video Archive</h2>
-      <button class="toggle-btn" onclick="toggleDescription(this)">Show More +</button>
-      <div class="info-collapsible">
-        <p>Collection of videography works...</p>
+      <div class="project-info-grid">
+        <div class="summary-col">
+          <p>Documentary & Editorial Video</p>
+        </div>
+        <div class="detail-col">
+          <div class="detail-text">
+            <p>Collection of videography works spanning 2023-2024.</p>
+          </div>
+          <button class="toggle-btn" onclick="toggleDescription(this)">Show More +</button>
+        </div>
       </div>
     </div>
   </template>
@@ -262,11 +396,31 @@
   <template id="content-dialogue">
     <div class="project-layout">
       <h2>Dialogue Magazine</h2>
-      <button class="toggle-btn" onclick="toggleDescription(this)">Show More +</button>
-      <div class="info-collapsible">
-        <p>Editorial layout details...</p>
+      <div class="project-info-grid">
+        <div class="summary-col">
+          <p>Editorial Layout & Design</p>
+        </div>
+        <div class="detail-col">
+          <div class="detail-text">
+            <p>Editorial layout details and visual system for Dialogue Magazine.</p>
+          </div>
+          <button class="toggle-btn" onclick="toggleDescription(this)">Show More +</button>
+        </div>
       </div>
-      <img data-src="assets/dialogue-cover.jpg">
+      <img loading="lazy" data-src="assets/dialogue-cover.jpg" class="hide-on-home">
+      <div class="photo-stack" data-sort-key="content-dialogue">
+        <img loading="lazy" data-src="assets/dialogue/dialogue documentation-04.webp" class="hide-on-home">
+        <img loading="lazy" data-src="assets/dialogue/dialogue documentation-05.webp" class="hide-on-home">
+        <img loading="lazy" data-src="assets/dialogue/dialogue documentation-06.webp" class="hide-on-home">
+        <img loading="lazy" data-src="assets/dialogue/dialogue documentation-07.webp" class="hide-on-home">
+        <img loading="lazy" data-src="assets/dialogue/dialogue documentation-08.webp" class="hide-on-home">
+        <img loading="lazy" data-src="assets/dialogue/dialogue documentation-09.webp" class="hide-on-home">
+        <img loading="lazy" data-src="assets/dialogue/dialogue documentation-10.webp" class="hide-on-home">
+        <img loading="lazy" data-src="assets/dialogue/dialogue documentation-11.webp" class="hide-on-home">
+        <img loading="lazy" data-src="assets/dialogue/dialogue documentation-12.webp" class="hide-on-home">
+        <img loading="lazy" data-src="assets/dialogue/dialogue documentation-16.webp">
+        <img loading="lazy" data-src="assets/dialogue/dialogue documentation-19.webp" class="hide-on-home">
+      </div>
     </div>
   </template>
 
@@ -275,13 +429,29 @@
       <h2>About Me</h2>
       <div class="about-layout">
         <div class="about-text">
-          <p>Photographer, Videographer & Graphic Designer Based in Stockholm, Sweden.</p>
-          <p>Simon Grey is a Stockholm-based visual communications student at Beckmans College of Design.</p>
+          <p>Simon Grey is a Stockholm-based visual communications
+            student at Beckmans College of Design. His practice spans
+            photography, video, editorial work, and creative ideation,
+            with interests in music, fashion, and brand identity,
+            and extends into motion and 3D-based work.</p>
+          <div class="cv-category" data-category="tools">
+            <h4>Tools I Use</h4>
+            <ul>
+              <li> Photoshop</li>
+              <li> Illustrator</li>
+              <li> InDesign</li>
+              <li>Blender</li>
+              <li>After Effects</li>
+              <li>Davinci Resolve</li>
+              <li> Premiere Pro</li>
+              <li>Visual Studio Code</li>
+
+            </ul>
+          </div>
           <div class="cv-category">
             <h4>Contact</h4>
             <ul>
-              <li><strong>Email:</strong> simongrey97@gmail.com</li>
-              <li><strong>Phone:</strong> (+46) 072-577-1844</li>
+              <li><strong>Email:</strong> simongrey97@gmail.com<br>simon.grey@edu.beckmans.se</li>
               <li><strong>Social:</strong> @simon.grey</li>
             </ul>
           </div>
@@ -303,49 +473,39 @@
               <li>
                 <strong>Junior Buyer</strong>
                 <span>Sneakersnstuff | 2020-2023</span>
-                <p>Main point of contact for a set of brands, creating and maintaining business plans, and leading the product lifecycle. Also took part in creating collaboration products and worked with various teams to align strategy.</p>
+                <p>Main point of contact for a set of brands, creating and maintaining business plans, and leading the
+                  product lifecycle. Also took part in creating collaboration products and worked with various teams to
+                  align strategy.</p>
               </li>
               <li>
                 <strong>Assistant Store Manager</strong>
                 <span>Sneakersnstuff | 2019-2020</span>
-                <p>Held daily meetings, assigned tasks, and ensured store standards were met. Offered the Store Manager position and handled team schedules and overhead costs.</p>
+                <p>Held daily meetings, assigned tasks, and ensured store standards were met. Offered the Store Manager
+                  position and handled team schedules and overhead costs.</p>
               </li>
               <li>
                 <strong>Assistant Stockroom Manager</strong>
                 <span>Sneakersnstuff | 2018-2019</span>
-                 <p>Handled deliveries, online orders, and stockroom organization. Offered to relocate to Los Angeles to help open a new store.</p>
+                <p>Handled deliveries, online orders, and stockroom organization. Offered to relocate to Los Angeles to
+                  help open a new store.</p>
               </li>
               <li>
                 <strong>Full-time Sales Associate</strong>
                 <span>Sneakersnstuff | 2017-2018</span>
-                <p>Prioritized customer service, drove sales, and assisted in back of house operations. Also trained new associates and built relationships with brand representatives.</p>
+                <p>Prioritized customer service, drove sales, and assisted in back of house operations. Also trained new
+                  associates and built relationships with brand representatives.</p>
               </li>
-               <li>
+              <li>
                 <strong>Stockroom Associate</strong>
                 <span>Sneakersnstuff | 2015-2017</span>
-                <p>Picked and packed online orders and maintained warehouse standards. Performed at a high level and was offered a position at the Stockholm store.</p>
+                <p>Picked and packed online orders and maintained warehouse standards. Performed at a high level and was
+                  offered a position at the Stockholm store.</p>
               </li>
-            </ul>
-          </div>
-          <div class="cv-category" data-category="skills">
-            <h4>Skills & Language</h4>
-            <ul>
-              <li>English (native), Swedish (fluent), Spanish (intermediate)</li>
-              <li>MS Office, MS NAV, Power Bi</li>
-              <li>Various B2B systems, Cashiering</li>
-            </ul>
-          </div>
-          <div class="cv-category" data-category="interests">
-            <h4>Personal Interests</h4>
-            <ul>
-              <li>Fashion, Streetwear, Sneakers, Art</li>
-              <li>Running, DJing, Travel, Film</li>
-              <li>African-American Literature</li>
             </ul>
           </div>
         </div>
         <div class="about-image">
-          <img data-src="assets/mewebby.jpg">
+          <img loading="lazy" data-src="assets/mewebby.jpg">
         </div>
       </div>
     </div>
@@ -361,4 +521,5 @@
   </div>
 
 </body>
+
 </html>
