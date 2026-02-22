@@ -21,56 +21,52 @@ window.toggleDescription = function (btn) {
 /* ==========================================================================
    3. MAIN INITIALIZATION
    ========================================================================== */
+// --- LAZY LOAD SETUP ---------------------------------------------------
+const observerOptions = { root: null, rootMargin: '400px', threshold: 0.1 };
+
+const observer = new IntersectionObserver((entries, observer) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const media = entry.target;
+      if (media.dataset.width) applyItemWidth(media);
+      if (media.tagName === 'IMG') {
+        media.onload = () => media.classList.add('loaded');
+        media.onerror = () => media.classList.add('loaded');
+        media.src = media.dataset.src;
+        if (media.complete && media.naturalHeight !== 0) {
+          media.classList.add('loaded');
+        }
+      }
+      if (media.tagName === 'VIDEO') {
+        media.src = media.dataset.src;
+        media.load();
+        media.classList.add('loaded');
+      }
+      observer.unobserve(media);
+    }
+  });
+}, observerOptions);
+
+function applyItemWidth(item) {
+  const w = Number(item.dataset.width || 100);
+  const clamped = Number.isFinite(w) ? Math.max(35, Math.min(100, w)) : 100;
+  item.dataset.width = String(clamped);
+  item.style.width = `${clamped}%`;
+}
+
+window.activateLazyLoad = function (container) {
+  if (!container) return;
+  const sized = container.querySelectorAll('img[data-width], video[data-width]');
+  sized.forEach(item => applyItemWidth(item));
+
+  const targets = container.querySelectorAll('img[data-src], video[data-src]');
+  targets.forEach(target => observer.observe(target));
+};
+
 document.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(window.location.search);
   const localHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
   const reorderEnabled = localHost && params.get('edit') === '1';
-
-  // --- LAZY LOAD SETUP ---------------------------------------------------
-  const observerOptions = { root: null, rootMargin: '200px', threshold: 0.1 };
-
-  const observer = new IntersectionObserver((entries, observer) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const media = entry.target;
-        if (media.dataset.width) applyItemWidth(media);
-        if (media.tagName === 'IMG') {
-          media.onload = () => media.classList.add('loaded');
-          media.onerror = () => media.classList.add('loaded');
-          media.src = media.dataset.src;
-          if (media.complete && media.naturalHeight !== 0) {
-            media.classList.add('loaded');
-          }
-        }
-        if (media.tagName === 'VIDEO') {
-          media.src = media.dataset.src;
-          media.load();
-          media.classList.add('loaded');
-        }
-        observer.unobserve(media);
-      }
-    });
-  }, observerOptions);
-
-  window.activateLazyLoad = function (container) {
-    const sized = container.querySelectorAll('img[data-width], video[data-width]');
-    sized.forEach(item => applyItemWidth(item));
-
-    const targets = container.querySelectorAll('img[data-src], video[data-src]');
-    targets.forEach(target => observer.observe(target));
-  };
-
-  function getMediaKey(el) {
-    if (!el) return '';
-    return el.getAttribute('data-src') || el.getAttribute('src') || '';
-  }
-
-  function applyItemWidth(item) {
-    const w = Number(item.dataset.width || 100);
-    const clamped = Number.isFinite(w) ? Math.max(35, Math.min(100, w)) : 100;
-    item.dataset.width = String(clamped);
-    item.style.width = `${clamped}%`;
-  }
 
   function applySavedSizes(stack) {
     const sortKey = stack.getAttribute('data-sort-key');
@@ -183,7 +179,8 @@ document.addEventListener('DOMContentLoaded', () => {
         x: Number(wrapper.dataset.x || 0),
         y: Number(wrapper.dataset.y || 0),
         w: Number(media.dataset.width || 0),
-        z: Number(wrapper.style.zIndex || 1)
+        z: Number(wrapper.style.zIndex || 1),
+        caption: wrapper.dataset.caption || ''
       };
     });
 
@@ -301,16 +298,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function enablePhotoReorder(container) {
-    if (!reorderEnabled) return;
+  window.enablePhotoReorder = function (container, force = false) {
+    if (!force && !reorderEnabled) return;
     if (!container) return;
 
-    const stacks = container.querySelectorAll('.photo-stack[data-sort-key="content-photography"]');
+    const stacks = container.querySelectorAll('.photo-stack[data-sort-key], .moodboard-grid[data-sort-key]');
     stacks.forEach(stack => {
       if (stack.dataset.reorderBound === 'true') return;
       stack.dataset.reorderBound = 'true';
       stack.classList.add('edit-freeform');
       stack.dataset.editMode = 'freeform';
+
+      // Ensure all media have src for dragging preview
       stack.querySelectorAll('img[data-src], video[data-src]').forEach(media => {
         if (!media.getAttribute('src')) {
           media.setAttribute('src', media.getAttribute('data-src') || '');
@@ -319,20 +318,23 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       const savedLayout = getSavedFreeLayout(stack);
-      const medias = Array.from(stack.querySelectorAll('img, video'));
+      // Moodboard uses .moodboard-post, projects use direct images or .photo-free-item
+      const medias = Array.from(stack.querySelectorAll('img, video, .moodboard-post'));
       const gap = 22;
       let yCursor = 0;
 
-      medias.forEach((media, idx) => {
+      stack.querySelectorAll('img, video').forEach((media, idx) => {
         const key = getMediaKey(media);
         const saved = key ? savedLayout[key] : null;
 
-        let wrapper = media.closest('.photo-free-item');
+        let wrapper = media.closest('.photo-free-item') || media.closest('.moodboard-post');
         if (!wrapper) {
           wrapper = document.createElement('div');
           wrapper.className = 'photo-free-item';
           media.parentNode.insertBefore(wrapper, media);
           wrapper.appendChild(media);
+        } else {
+          wrapper.classList.add('photo-free-item');
         }
 
         if (!wrapper.querySelector('.photo-resize-handle')) {
@@ -389,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const exportBtn = document.createElement('button');
         exportBtn.type = 'button';
         exportBtn.className = 'reorder-export-btn';
-        exportBtn.textContent = 'Export Freeform HTML';
+        exportBtn.textContent = 'EXPORT FREEFORM HTML';
 
         exportBtn.addEventListener('click', async () => {
           const nodes = Array.from(stack.querySelectorAll('.photo-free-item'));
@@ -413,7 +415,7 @@ document.addEventListener('DOMContentLoaded', () => {
           try {
             await navigator.clipboard.writeText(textBlock);
             exportBtn.textContent = 'Copied';
-            setTimeout(() => { exportBtn.textContent = 'Export Freeform HTML'; }, 1400);
+            setTimeout(() => { exportBtn.textContent = 'EXPORT FREEFORM HTML'; }, 1400);
           } catch (_) {
             window.prompt('Copy this HTML:', textBlock);
           }

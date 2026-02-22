@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/" xmlns:moz="http://www.mozilla.org/2006/browser/search/">
+  <ShortName>Simon Grey Portfolio</ShortName>
+  <Description>Search Simon Grey's portfolio for photography, graphic design, and motion graphics projects</Description>
+  <InputEncoding>UTF-8</InputEncoding>
+  <Image width="16" height="16" type="image/x-icon">https://simongrey.com/assets/home/Artboard 1.png</Image>
+  <Url type="text/html" method="get" template="https://simongrey.com/"/>
+  <Url type="application/opensearchdescription+xml" rel="self" href="https://simongrey.com/opensearch.xml"/>
+  <moz:SearchForm>https://simongrey.com/</moz:SearchForm>
+</OpenSearchDescription>

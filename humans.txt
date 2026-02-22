@@ -1,0 +1,10 @@
+User-agent: *
+Disallow: /css/
+Disallow: /js/
+Disallow: /assets/
+
+Sitemap: https://simongrey.com/sitemap.xml
+
+Contact: simongrey97@gmail.com
+Stockholm, Sweden
+https://simongrey.com/

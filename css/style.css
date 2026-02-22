@@ -1,4 +1,16 @@
 /* =========================
+   INLINE STYLES FROM HTML
+========================= */
+.project-layout h2 {
+  font-weight: normal;
+  text-transform: uppercase;
+}
+
+/* =========================
+   VARIABLES & RESET
+========================= */
+
+/* =========================
    VARIABLES & RESET
 ========================= */
 :root {
@@ -12,14 +24,9 @@
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 24px;
-
-  /* Type Scale */
   --font-heading: 14px;
-  /* Was 13px */
   --font-body: 12px;
-  /* Was 10px/11px */
   --font-meta: 10px;
-  /* Was 9px */
 }
 
 body.dark {
@@ -213,7 +220,6 @@ body.dark .project-text {
   transition: opacity 0.5s ease, filter 0.3s ease;
 }
 
-.home-hero img,
 .home-hero video {
   width: 100%;
   height: 100%;
@@ -338,11 +344,6 @@ body.project-open .home-hero {
   transition: opacity 0.2s ease;
 }
 
-.project-popout h2 {
-  font-size: 29px;
-  margin-bottom: 10px;
-  text-transform: uppercase;
-}
 
 /* =========================
    PROJECT CONTENT STYLES
@@ -461,8 +462,8 @@ body.project-open .home-hero {
 }
 
 .carousel img {
-  flex: 0 0 85%;
-  width: 85%;
+  flex: 0 0 48%;
+  width: 48%;
   scroll-snap-align: start;
   object-fit: width;
   min-height: 300px;
@@ -494,10 +495,25 @@ body.project-open .home-hero {
 /* Photo Stack (Grid) */
 .photo-stack {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   align-items: start;
   width: 100%;
+}
+
+.photo-stack[data-sort-key="content-field-day"] {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.photo-stack[data-sort-key="content-plattan"] {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.photo-stack[data-sort-key="content-photography"] {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
 }
 
 .photo-stack img {
@@ -512,12 +528,7 @@ body.project-open .home-hero {
   grid-column: span 2;
 }
 
-.photo-stack[data-sort-key="content-photography"] {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: stretch;
-}
+
 
 .photo-stack[data-sort-key="content-photography"] img,
 .photo-stack[data-sort-key="content-photography"] video {
@@ -628,11 +639,6 @@ video.loaded {
   margin-bottom: 2px;
 }
 
-.credits {
-  margin-top: 40px;
-  border-left: 2px solid var(--accent);
-  padding-left: 15px;
-}
 
 .about-layout {
   display: grid;
@@ -927,6 +933,22 @@ video.loaded {
   padding: 0;
 }
 
+.photo-caption-input {
+  position: absolute;
+  bottom: -30px;
+  left: 0;
+  right: 0;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: inherit;
+  z-index: 10;
+  backdrop-filter: blur(5px);
+}
+
 /* =========================
    DESKTOP LANDING & LOGIC (min-width: 851px)
 ========================= */
@@ -1208,8 +1230,7 @@ video.loaded {
     font-size: 12px;
   }
 
-  .intro p,
-  .timestamp {
+  .intro p {
     font-size: clamp(9px, 2.5vw, 12px);
     line-height: 1.4;
   }
