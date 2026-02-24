@@ -42,11 +42,10 @@ REQUIRED_MOODBOARD_HTML_SNIPPETS = [
     'id="moodboard-grid"',
 ]
 REQUIRED_MOODBOARD_JS_SNIPPETS = [
-    "import { StateManager } from './modules/stateManager.js'",
-    "import { GridEngine } from './modules/gridEngine.js'",
-    "import { AuthManager } from './modules/authManager.js'",
-    "import { GitHubApiManager } from './modules/githubApiManager.js'",
-    "import { UIController } from './modules/uiController.js'"
+    "function applyLayout()",
+    "function saveLayout()",
+    "function loadMoodboardGallery()",
+    "document.addEventListener('DOMContentLoaded', init);",
 ]
 
 

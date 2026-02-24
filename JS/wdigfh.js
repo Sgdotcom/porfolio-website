@@ -1,66 +1,120 @@
-import { StateManager } from './modules/stateManager.js';
-import { GridEngine } from './modules/gridEngine.js';
-import { AuthManager } from './modules/authManager.js';
-import { GitHubApiManager } from './modules/githubApiManager.js';
-import { UIController } from './modules/uiController.js';
+// Simple Moodboard Layout Script
+// Handles grid positioning for static moodboard
 
-const editMode = new URLSearchParams(window.location.search).get('edit') === '1';
+(function() {
+  'use strict';
 
-const gridElement = document.querySelector('.moodboard-grid');
-const controlsElement = document.getElementById('moodboard-controls');
-const statusElement = controlsElement?.querySelector('[data-status]');
-const loginOverlay = document.getElementById('edit-login-overlay');
+  function initMoodboardLayout() {
+    const grid = document.querySelector('.moodboard-grid');
+    if (!grid) return;
 
-const stateManager = new StateManager();
+    const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-const gridEngine = new GridEngine({
-  gridElement,
-  columns: 10,
-  stateManager,
-  editMode
-});
+    // Apply grid positioning based on data attributes
+    function applyGridLayout() {
+      const posts = Array.from(grid.querySelectorAll('.moodboard-post'));
+      
+      posts.forEach((post) => {
+        const wUnits = parseInt(post.getAttribute('data-w-units')) || 1;
+        const hUnits = parseInt(post.getAttribute('data-h-units')) || 1;
 
-const githubOwner = document.querySelector('meta[name="github-owner"]')?.content || window.location.hostname;
-const githubRepo = document.querySelector('meta[name="github-repo"]')?.content || 'porfolio-website';
-const githubBranch = document.querySelector('meta[name="github-branch"]')?.content || 'main';
-
-const authManager = new AuthManager({
-  editMode,
-  overlay: loginOverlay
-});
-
-const apiManager = new GitHubApiManager({
-  owner: githubOwner,
-  repo: githubRepo,
-  branch: githubBranch,
-  tokenProvider: () => authManager.getToken()
-});
-
-const uiController = new UIController({
-  stateManager,
-  gridEngine,
-  authManager,
-  apiManager,
-  controls: controlsElement,
-  statusElement
-});
-
-uiController.setStatus(editMode ? 'Edit mode' : 'View mode');
-
-authManager.setOnAuthenticated(() => {
-  if (!editMode) return;
-  controlsElement?.classList.remove('hidden');
-  uiController.setStatus('Edit mode');
-});
-
-authManager.init();
-
-fetch('assets/pictures-of/gallery.json')
-  .then((response) => {
-    if (!response.ok) {
-      throw new Error('Unable to load gallery');
+        // Apply CSS Grid positioning
+        post.style.gridColumn = `span ${wUnits}`;
+        post.style.gridRow = `span ${hUnits}`;
+      });
     }
-    return response.json();
-  })
-  .then((data) => stateManager.loadState(data))
-  .catch(() => stateManager.loadState({ items: [] }));
+
+    // Initial layout
+    applyGridLayout();
+
+    // Simple video autoplay handling
+    const videos = grid.querySelectorAll('video');
+    console.log(`Found ${videos.length} videos`);
+    
+    videos.forEach((video, index) => {
+      console.log(`Video ${index}:`, video.querySelector('source')?.src);
+      
+      // Set proper video attributes that were in the working version
+      video.autoplay = true;
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+      video.setAttribute('playsinline', '');
+      
+      // Force video visibility
+      video.style.opacity = '1';
+      video.style.visibility = 'visible';
+      video.style.display = 'block';
+      video.style.position = 'absolute';
+      video.style.top = '0';
+      video.style.left = '0';
+      video.style.width = '100%';
+      video.style.height = '100%';
+      video.style.zIndex = '2';
+      video.style.background = 'transparent';
+      
+      // Remove any potential poster
+      video.removeAttribute('poster');
+      
+      // Force load the video
+      video.load();
+      
+      // Add multiple event listeners for debugging
+      video.addEventListener('loadstart', () => console.log(`Video ${index}: loadstart`));
+      video.addEventListener('loadeddata', () => console.log(`Video ${index}: loadeddata`));
+      video.addEventListener('canplay', () => console.log(`Video ${index}: canplay`));
+      video.addEventListener('playing', () => console.log(`Video ${index}: playing`));
+      video.addEventListener('error', (e) => console.error(`Video ${index}: error`, e));
+      
+      // Try to play video with multiple fallbacks
+      const playVideo = () => {
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            console.log(`Video ${index} playing successfully`);
+          }).catch(error => {
+            console.log(`Video ${index} autoplay blocked:`, error);
+            // Add click to play functionality
+            video.addEventListener('click', () => {
+              video.play();
+            }, { once: true });
+          });
+        }
+      };
+      
+      // Try playing immediately
+      playVideo();
+      
+      // Also try playing after a delay
+      setTimeout(playVideo, 1000);
+      
+      // Try playing when user interacts with page
+      document.addEventListener('click', playVideo, { once: true });
+      document.addEventListener('touchstart', playVideo, { once: true });
+    });
+
+    // Re-layout on resize with debouncing and performance optimization
+    let resizeTimer;
+    let isResizing = false;
+    window.addEventListener('resize', () => {
+      if (!isResizing) {
+        isResizing = true;
+        document.body.style.willChange = 'transform';
+      }
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        applyGridLayout();
+        isResizing = false;
+        document.body.style.willChange = 'auto';
+      }, 250);
+    });
+  }
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMoodboardLayout);
+  } else {
+    initMoodboardLayout();
+  }
+
+})();
