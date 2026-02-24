@@ -5,6 +5,14 @@ class PublicGalleryManager {
     this.isGitHubPages = window.location.hostname.includes('github.io') || 
                         window.location.hostname.includes('pages.dev') ||
                         window.location.hostname.includes('simongrey.blue');
+    
+    // Environment-based logging
+    const isDevelopment = window.location.hostname.includes('localhost') || 
+                          window.location.hostname.includes('127.0.0.1') ||
+                          window.location.protocol === 'file:';
+    const log = isDevelopment ? console.log : () => {};
+    
+    this.log = log;
     this.init();
   }
 
@@ -21,7 +29,7 @@ class PublicGalleryManager {
     
     // Sync admin changes to public gallery
     if (adminChanges.length > 0) {
-      console.log('Syncing admin changes to public gallery...');
+      this.log('Syncing admin changes to public gallery...');
       
       // Add new admin images to public gallery
       adminChanges.forEach(change => {
@@ -33,7 +41,7 @@ class PublicGalleryManager {
       this.savePublicGallery(publicGallery);
       this.clearAdminChanges();
       
-      console.log('Public gallery updated with', publicGallery.length, 'items');
+      this.log('Public gallery updated with', publicGallery.length, 'items');
     }
   }
 
@@ -69,7 +77,7 @@ class PublicGalleryManager {
   loadPublicGallery() {
     if (this.isGitHubPages) {
       const publicGallery = this.getPublicGallery();
-      console.log('Loading public gallery with', publicGallery.length, 'items');
+      this.log('Loading public gallery with', publicGallery.length, 'items');
       return publicGallery;
     }
     return null;
@@ -79,7 +87,7 @@ class PublicGalleryManager {
   publishChanges() {
     const changes = this.getAdminChanges();
     if (changes.length === 0) {
-      console.log('No changes to publish');
+      this.log('No changes to publish');
       return false;
     }
 
@@ -93,7 +101,7 @@ class PublicGalleryManager {
     this.savePublicGallery(publicGallery);
     this.clearAdminChanges();
     
-    console.log('Published', changes.length, 'changes to public gallery');
+    this.log('Published', changes.length, 'changes to public gallery');
     return true;
   }
 

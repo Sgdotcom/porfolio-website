@@ -248,11 +248,17 @@ class MoodboardAuth {
     // Add logout button
     this.addLogoutButton();
     
-    // Show today's password in console for admin
-    console.log('%c🔐 MOODBOARD ADMIN ACCESS', 'color: #007bff; font-size: 16px; font-weight: bold;');
-    console.log('%cToday\'s admin password:', 'color: #333; font-size: 14px;');
-    console.log(`%c${this.adminPassword}`, 'color: #28a745; font-size: 18px; font-family: monospace; padding: 4px 8px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;');
-    console.log('%cThis password changes daily and is unique to your browser/device.', 'color: #666; font-style: italic;');
+    // Show today's password in console for admin (development only)
+    const isDevelopment = window.location.hostname.includes('localhost') || 
+                        window.location.hostname.includes('127.0.0.1') ||
+                        window.location.protocol === 'file:';
+    
+    if (isDevelopment) {
+      console.log('%c🔐 MOODBOARD ADMIN ACCESS', 'color: #007bff; font-size: 16px; font-weight: bold;');
+      console.log('%cToday\'s admin password:', 'color: #333; font-size: 14px;');
+      console.log(`%c${this.adminPassword}`, 'color: #28a745; font-size: 18px; font-family: monospace; padding: 4px 8px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;');
+      console.log('%cThis password changes daily and is unique to your browser/device.', 'color: #666; font-style: italic;');
+    }
   }
 
   addLogoutButton() {
