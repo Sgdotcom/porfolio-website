@@ -11,8 +11,8 @@ class MoodboardAuth {
   }
 
   init() {
-    this.checkAuthStatus();
     this.setupAuthUI();
+    this.checkAuthStatus();
   }
 
   generateAdminPassword() {
@@ -66,6 +66,7 @@ class MoodboardAuth {
         </div>
       </div>
     `;
+    authModal.style.display = 'none';
     document.body.appendChild(authModal);
 
     // Add styles
@@ -175,6 +176,10 @@ class MoodboardAuth {
     document.getElementById('admin-password').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') this.handleLogin();
     });
+
+    if (!this.isEditMode) {
+      this.hideAuthModal();
+    }
   }
 
   handleLogin() {
@@ -220,7 +225,7 @@ class MoodboardAuth {
       return;
     }
 
-    if (modal) modal.style.display = 'flex';
+    if (modal) modal.style.display = 'block';
     
     // Hide edit mode UI
     const editIndicator = document.getElementById('edit-indicator');
