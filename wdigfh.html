@@ -122,6 +122,14 @@
   </footer>
 
   <script src="JS/wdigfh.js" defer></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.enablePhotoReorder) {
+        const grid = document.querySelector('#moodboard-grid');
+        window.enablePhotoReorder(grid);
+      }
+    });
+  </script>
 
 </body>
 
