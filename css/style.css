@@ -123,6 +123,41 @@ body.dark .project-text {
   z-index: 200000;
 }
 
+@media (max-width: 850px) {
+  .top-bar {
+    font-size: 9px;
+    padding: 3px var(--site-margin);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .top-bar .left,
+  .top-bar .right {
+    font-size: 9px;
+    white-space: nowrap;
+  }
+
+  .top-bar .right a,
+  .top-bar .right button {
+    font-size: 9px;
+    padding: 4px 6px;
+    white-space: nowrap;
+  }
+
+  .top-bar .left .updated {
+    font-size: 9px;
+    white-space: nowrap;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .top-bar .right {
+    gap: 8px;
+  }
+}
+
 .top-bar .left,
 .top-bar .right {
   display: flex;
@@ -1284,107 +1319,177 @@ video.loaded {
     display: none !important;
   }
 
-  .mobile-content-inject {
-    display: block !important;
-    width: 100%;
-    max-height: none;
-    opacity: 0;
-    overflow: visible;
-    transition: opacity 0.35s ease;
-    margin-top: 10px;
-    position: relative;
-    z-index: 10;
-    pointer-events: auto;
-  }
-
-  .project-wrapper.active .mobile-content-inject {
-    max-height: calc(100vh - 180px);
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    opacity: 1;
-    padding-bottom: 20px;
-  }
-
-  .project-wrapper.active>a {
-    position: static;
-  }
-
-  .mobile-content-inject .photo-stack {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    overflow: visible;
-    gap: 10px;
-    padding-bottom: 10px;
-  }
-
-  .mobile-content-inject .photo-stack img,
-  .mobile-content-inject .photo-stack video {
-    --photo-w: 100%;
-    --photo-x: 0px;
-    width: var(--photo-w);
-    height: auto;
-    max-height: none;
-    object-fit: contain;
-    border-radius: 4px;
-    transform: translateX(var(--photo-x));
-  }
-
-  .mobile-content-inject .project-layout>h2 {
+  /* Full-Page Navigation Styles */
+  .mobile-project-view {
     display: none;
-  }
-
-  .top-bar {
-    flex-direction: row;
-    align-items: center;
-    height: 50px;
-    padding: 0 var(--site-margin);
-  }
-
-  .top-bar .right {
-    width: auto;
-    margin-left: auto;
-    justify-content: flex-end;
-    gap: 10px;
-    font-size: 10px;
-  }
-
-  .top-bar .left {
-    display: flex !important;
-    min-width: 0;
-  }
-
-  .top-bar .left .updated {
-    max-width: 130px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .contact-wrapper:hover #contact-overlay {
+    position: fixed;
+    top: 50px;
+    left: 0;
+    width: 100%;
+    height: calc(100vh - 50px);
+    background: var(--bg);
+    z-index: 300000;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-top: 0px;
     opacity: 0;
-    pointer-events: none;
+    transform: translateX(100%);
+    transition: opacity 0.3s ease, transform 0.3s ease;
   }
 
-  .contact-wrapper.active #contact-overlay {
-    opacity: 1 !important;
-    transform: translate(-50%, 0) !important;
-    pointer-events: auto !important;
-    display: flex !important;
+  .mobile-project-view.active {
+    display: block;
+    opacity: 1;
+    transform: translateX(0);
   }
 
-  /* Adjustments for new grid on mobile */
-  .project-info-grid {
+  .mobile-project-content {
+    padding: 20px var(--site-margin);
+    max-width: none;
+  }
+
+  /* Mobile project text styling - single column */
+  .mobile-project-content .project-info-grid {
     grid-template-columns: 1fr;
     gap: 15px;
   }
 
-  .about-layout {
+  .mobile-project-content .detail-text {
+    column-count: 1;
+    column-gap: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+
+  .mobile-project-content .detail-text.expanded {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .mobile-project-content .toggle-btn {
+    display: inline-block;
+    margin-top: 8px;
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
+    font-size: var(--font-meta);
+    color: var(--text);
+    cursor: pointer;
+    text-decoration: underline;
+    opacity: 0.7;
+  }
+
+  .mobile-project-content .toggle-btn:hover {
+    opacity: 1;
+  }
+
+  .mobile-project-content .grid-2-col {
     grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .mobile-project-content .about-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  /* Simplified project cards for mobile */
+  .project-wrapper {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+  }
+
+  body.dark .project-wrapper {
+    background: #1a1a1a;
+    border-color: #333;
+  }
+
+  .project-wrapper:active {
+    transform: scale(0.98);
+    background: #f5f5f5;
+  }
+
+  body.dark .project-wrapper:active {
+    background: #2a2a2a;
+  }
+
+  .project-wrapper a {
+    pointer-events: none; /* Let the wrapper handle clicks */
+  }
+
+  .project-text {
+    display: none; /* Hide on mobile, use full page instead */
   }
 
   .home-hero {
     height: 100vh;
+  }
+}
+
+/* Desktop overrides to restore original functionality */
+@media (min-width: 851px) {
+  .project-wrapper {
+    border: none;
+    border-radius: 0;
+    padding: var(--space-3) 0;
+    margin-bottom: 0;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    display: block;
+    overflow: visible;
+    max-width: 300px;
+  }
+
+  body.dark .project-wrapper {
+    background: transparent;
+    border-color: transparent;
+  }
+
+  .project-wrapper:active {
+    transform: none;
+    background: transparent;
+  }
+
+  body.dark .project-wrapper:active {
+    background: transparent;
+  }
+
+  .project-wrapper a {
+    pointer-events: auto; /* Restore desktop link functionality */
+    font-size: 11px;
+    text-decoration: none;
+    color: var(--text);
+    display: block;
+    letter-spacing: 0.02em;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .project-text {
+    display: block; /* Restore desktop project text */
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    max-width: 400px;
+    white-space: normal;
+    overflow-wrap: break-word;
+    transition: max-height 0.35s ease, opacity 0.25s ease, margin-top 0.25s ease;
+    color: #323232;
+    font-size: var(--font-body);
+    margin-left: 20px;
+    pointer-events: none;
+  }
+
+  body.dark .project-text {
+    color: #bbbbbb;
   }
 }

@@ -1,1029 +1,1253 @@
 /* ==========================================================================
-   2. GLOBAL UTILITIES
+   Global Public Helpers
    ========================================================================== */
-window.toggleDescription = function (btn) {
-  const container = btn.closest('.detail-col');
-  if (!container) return;
-  const content = container.querySelector('.detail-text');
+window.toggleDescription = function toggleDescription(button) {
+  const detailColumn = button.closest('.detail-col');
+  if (!detailColumn) return;
 
-  if (content) {
-    if (content.classList.contains('expanded')) {
-      content.classList.remove('expanded');
-      btn.innerHTML = "Show More +";
-    } else {
-      content.classList.add('expanded');
-      btn.innerHTML = "Show Less -";
-    }
-  }
+  const detailText = detailColumn.querySelector('.detail-text');
+  if (!detailText) return;
+
+  const isExpanded = detailText.classList.toggle('expanded');
+  button.textContent = isExpanded ? 'Show Less -' : 'Show More +';
 };
-
 
 /* ==========================================================================
-   3. MAIN INITIALIZATION
+   Main App
    ========================================================================== */
-// --- LAZY LOAD SETUP ---------------------------------------------------
-const observerOptions = { root: null, rootMargin: '400px', threshold: 0.1 };
-
-const observer = new IntersectionObserver((entries, observer) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      const media = entry.target;
-      if (media.dataset.width) applyItemWidth(media);
-      if (media.tagName === 'IMG') {
-        media.onload = () => media.classList.add('loaded');
-        media.onerror = () => media.classList.add('loaded');
-        media.src = media.dataset.src;
-        if (media.complete && media.naturalHeight !== 0) {
-          media.classList.add('loaded');
-        }
-      }
-      if (media.tagName === 'VIDEO') {
-        media.src = media.dataset.src;
-        media.load();
-        media.classList.add('loaded');
-      }
-      observer.unobserve(media);
-    }
-  });
-}, observerOptions);
-
-function applyItemWidth(item) {
-  const w = Number(item.dataset.width || 100);
-  const clamped = Number.isFinite(w) ? Math.max(35, Math.min(100, w)) : 100;
-  item.dataset.width = String(clamped);
-  item.style.width = `${clamped}%`;
-}
-
-window.activateLazyLoad = function (container) {
-  if (!container) return;
-  const sized = container.querySelectorAll('img[data-width], video[data-width]');
-  sized.forEach(item => applyItemWidth(item));
-
-  const targets = container.querySelectorAll('img[data-src], video[data-src]');
-  targets.forEach(target => observer.observe(target));
-};
-
 document.addEventListener('DOMContentLoaded', () => {
-  const params = new URLSearchParams(window.location.search);
-  const localHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
-  const reorderEnabled = localHost && params.get('edit') === '1';
+  const CONFIG = {
+    mobileBreakpoint: 850,
+    popoutOffset: -10,
+    lazyRootMargin: '400px',
+    homepageHydrationRootMargin: '900px 0px',
+    homepageMarkerY: 140,
+    detailExpandedMarginTopPx: 5,
+    motion: {
+      revealDelayMs: 10,
+      lightboxSwitchMs: 150,
+      mobileCloseMs: 300,
+      contactToggleDelayMs: 10,
+      copiedResetMs: 1400
+    }
+  };
 
-  function applySavedSizes(stack) {
-    const sortKey = stack.getAttribute('data-sort-key');
-    if (!sortKey) return;
+  const storage = {
+    readJson(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return fallback;
+        const parsed = JSON.parse(raw);
+        return parsed == null ? fallback : parsed;
+      } catch (_) {
+        return fallback;
+      }
+    },
 
-    try {
-      const saved = localStorage.getItem(`photo-size:${sortKey}`);
-      if (!saved) return;
-      const sizes = JSON.parse(saved);
-      if (!sizes || typeof sizes !== 'object') return;
+    writeJson(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (_) {
+        // Ignore storage failures.
+      }
+    },
 
-      stack.querySelectorAll('img, video').forEach(item => {
-        const key = getMediaKey(item);
-        const w = key ? Number(sizes[key]) : NaN;
-        if (Number.isFinite(w)) {
-          item.dataset.width = String(w);
+    remove(key) {
+      try {
+        localStorage.removeItem(key);
+      } catch (_) {
+        // Ignore storage failures.
+      }
+    }
+  };
+
+  const math = {
+    clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    },
+
+    mod(index, length) {
+      if (length <= 0) return 0;
+      return ((index % length) + length) % length;
+    }
+  };
+
+  const mediaUtils = {
+    getMediaKey(element) {
+      if (!element) return '';
+      return element.getAttribute('data-src') || element.getAttribute('src') || '';
+    },
+
+    sanitizeWidthPercent(value, fallback = 100) {
+      const numericValue = Number(value);
+      if (!Number.isFinite(numericValue)) return fallback;
+      return math.clamp(numericValue, 35, 100);
+    },
+
+    normalizeMediaWidth(element) {
+      const widthPercent = mediaUtils.sanitizeWidthPercent(element.dataset.width || 100);
+      element.dataset.width = String(widthPercent);
+      element.style.width = `${widthPercent}%`;
+    },
+
+    getMediaList(container) {
+      return Array.from(container.querySelectorAll('img, video'));
+    }
+  };
+
+  const motion = {
+    onNextFrame(callback) {
+      requestAnimationFrame(callback);
+    },
+
+    afterDelay(ms, callback) {
+      return window.setTimeout(callback, ms);
+    },
+
+    revealWithClass(element, className, delayMs) {
+      motion.afterDelay(delayMs, () => element.classList.add(className));
+    }
+  };
+
+  const env = {
+    isMobileViewport() {
+      return window.innerWidth <= CONFIG.mobileBreakpoint;
+    },
+
+    isDesktopViewport() {
+      return !env.isMobileViewport();
+    }
+  };
+
+  const dom = {
+    query(selector, root = document) {
+      return root.querySelector(selector);
+    },
+
+    queryAll(selector, root = document) {
+      return Array.from(root.querySelectorAll(selector));
+    },
+
+    clear(element) {
+      if (element) element.innerHTML = '';
+    }
+  };
+
+  const appState = {
+    reorderEnabled: (() => {
+      const params = new URLSearchParams(window.location.search);
+      const localHost = window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.protocol === 'file:';
+      return localHost && params.get('edit') === '1';
+    })(),
+    homepageObserver: null,
+    homepageTicking: false,
+    lightboxImages: [],
+    lightboxIndex: 0
+  };
+
+  /* ----------------------------------------------------------------------
+     Lazy Media Loader
+     ---------------------------------------------------------------------- */
+
+  const mediaObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+
+      const mediaElement = entry.target;
+      if (mediaElement.dataset.width) mediaUtils.normalizeMediaWidth(mediaElement);
+
+      if (mediaElement.tagName === 'IMG') {
+        mediaElement.onload = () => mediaElement.classList.add('loaded');
+        mediaElement.onerror = () => mediaElement.classList.add('loaded');
+        mediaElement.src = mediaElement.dataset.src;
+        if (mediaElement.complete && mediaElement.naturalHeight !== 0) {
+          mediaElement.classList.add('loaded');
         }
-      });
-    } catch (_) {
-      // Ignore invalid persisted data.
-    }
-  }
+      }
 
-  function applySavedOrder(stack) {
-    const sortKey = stack.getAttribute('data-sort-key');
-    if (!sortKey) return;
+      if (mediaElement.tagName === 'VIDEO') {
+        mediaElement.src = mediaElement.dataset.src;
+        mediaElement.load();
+        mediaElement.classList.add('loaded');
+      }
 
-    try {
-      const saved = localStorage.getItem(`photo-order:${sortKey}`);
-      if (!saved) return;
-
-      const order = JSON.parse(saved);
-      if (!Array.isArray(order) || !order.length) return;
-
-      const items = Array.from(stack.querySelectorAll('img, video'));
-      const byKey = new Map(items.map(item => [getMediaKey(item), item]));
-      const placed = new Set();
-
-      order.forEach(key => {
-        const item = byKey.get(key);
-        if (item) {
-          stack.appendChild(item);
-          placed.add(item);
-        }
-      });
-
-      items.forEach(item => {
-        if (!placed.has(item)) stack.appendChild(item);
-      });
-    } catch (_) {
-      // Ignore invalid persisted data.
-    }
-  }
-
-  function saveOrder(stack) {
-    const sortKey = stack.getAttribute('data-sort-key');
-    if (!sortKey) return;
-
-    const keys = Array.from(stack.querySelectorAll('img, video'))
-      .map(getMediaKey)
-      .filter(Boolean);
-
-    try {
-      localStorage.setItem(`photo-order:${sortKey}`, JSON.stringify(keys));
-    } catch (_) {
-      // Ignore storage failures.
-    }
-  }
-
-  function saveSizes(stack) {
-    const sortKey = stack.getAttribute('data-sort-key');
-    if (!sortKey) return;
-
-    const sizes = {};
-    stack.querySelectorAll('img, video').forEach(item => {
-      const key = getMediaKey(item);
-      const width = Number(item.dataset.width || 100);
-      if (key && Number.isFinite(width)) sizes[key] = width;
+      observer.unobserve(mediaElement);
     });
+  }, { root: null, rootMargin: CONFIG.lazyRootMargin, threshold: 0.1 });
 
-    try {
-      localStorage.setItem(`photo-size:${sortKey}`, JSON.stringify(sizes));
-    } catch (_) {
-      // Ignore storage failures.
-    }
+  function activateLazyLoad(container) {
+    if (!container) return;
+
+    dom.queryAll('img[data-width], video[data-width]', container)
+      .forEach(mediaUtils.normalizeMediaWidth);
+
+    dom.queryAll('img[data-src], video[data-src]', container)
+      .forEach(target => mediaObserver.observe(target));
   }
 
-  function getSavedFreeLayout(stack) {
-    const sortKey = stack.getAttribute('data-sort-key');
+  window.activateLazyLoad = activateLazyLoad;
+
+  /* ----------------------------------------------------------------------
+     Freeform Photo Layout (Edit Mode)
+     ---------------------------------------------------------------------- */
+
+  function getSortKey(stack) {
+    return stack.getAttribute('data-sort-key') || '';
+  }
+
+  function getSavedLayoutMap(stack) {
+    const sortKey = getSortKey(stack);
     if (!sortKey) return {};
-    try {
-      const raw = localStorage.getItem(`photo-layout:${sortKey}`);
-      const parsed = raw ? JSON.parse(raw) : {};
-      return parsed && typeof parsed === 'object' ? parsed : {};
-    } catch (_) {
-      return {};
-    }
+    const parsed = storage.readJson(`photo-layout:${sortKey}`, {});
+    return parsed && typeof parsed === 'object' ? parsed : {};
   }
 
-  function saveFreeLayout(stack) {
-    const sortKey = stack.getAttribute('data-sort-key');
+  function saveLayoutMap(stack) {
+    const sortKey = getSortKey(stack);
     if (!sortKey) return;
 
     const payload = {};
-    stack.querySelectorAll('.photo-free-item').forEach(wrapper => {
-      const media = wrapper.querySelector('img, video');
-      const key = getMediaKey(media);
+    dom.queryAll('.photo-free-item', stack).forEach((wrapper) => {
+      const mediaElement = dom.query('img, video', wrapper);
+      const key = mediaUtils.getMediaKey(mediaElement);
       if (!key) return;
+
       payload[key] = {
         x: Number(wrapper.dataset.x || 0),
         y: Number(wrapper.dataset.y || 0),
-        w: Number(media.dataset.width || 0),
+        w: Number(mediaElement.dataset.width || 0),
         z: Number(wrapper.style.zIndex || 1),
         caption: wrapper.dataset.caption || ''
       };
     });
 
-    try {
-      localStorage.setItem(`photo-layout:${sortKey}`, JSON.stringify(payload));
-    } catch (_) {
-      // Ignore storage failures.
-    }
+    storage.writeJson(`photo-layout:${sortKey}`, payload);
+  }
+
+  function clearSavedLayout(stack) {
+    const sortKey = getSortKey(stack);
+    if (!sortKey) return;
+    storage.remove(`photo-layout:${sortKey}`);
+  }
+
+  function computeFreeItemLayout({ stackWidth, x, y, widthPercent }) {
+    const safeWidth = math.clamp(Number.isFinite(widthPercent) ? widthPercent : 0, 0, 100);
+    const pxWidth = (Math.max(1, stackWidth) * safeWidth) / 100;
+    const maxX = Math.max(0, stackWidth - pxWidth);
+
+    return {
+      x: math.clamp(Number.isFinite(x) ? x : 0, 0, maxX),
+      y: Math.max(0, Number.isFinite(y) ? y : 0),
+      widthPercent: safeWidth
+    };
+  }
+
+  function applyFreeItemLayout(stack, wrapper, mediaElement, x, y, widthPercent) {
+    const nextLayout = computeFreeItemLayout({
+      stackWidth: stack.clientWidth,
+      x,
+      y,
+      widthPercent
+    });
+
+    wrapper.dataset.x = String(nextLayout.x);
+    wrapper.dataset.y = String(nextLayout.y);
+
+    mediaElement.dataset.width = String(nextLayout.widthPercent);
+    mediaElement.style.width = '100%';
+    mediaElement.style.transform = 'none';
+
+    wrapper.style.left = `${nextLayout.x}px`;
+    wrapper.style.top = `${nextLayout.y}px`;
+    wrapper.style.width = `${nextLayout.widthPercent}%`;
+  }
+
+  function estimateItemHeight(stackWidth, widthPercent, mediaElement) {
+    const safeWidth = math.clamp(widthPercent, 0, 100);
+    const pixelWidth = (Math.max(1, stackWidth) * safeWidth) / 100;
+    const aspectRatio = mediaElement.naturalWidth > 0
+      ? (mediaElement.naturalHeight / mediaElement.naturalWidth)
+      : 0.7;
+    return Math.max(40, pixelWidth * aspectRatio);
   }
 
   function ensureFreeStackHeight(stack) {
     let maxBottom = 0;
-    stack.querySelectorAll('.photo-free-item').forEach(wrapper => {
+    dom.queryAll('.photo-free-item', stack).forEach((wrapper) => {
       const y = Number(wrapper.dataset.y || 0);
-      const h = wrapper.offsetHeight || 0;
-      maxBottom = Math.max(maxBottom, y + h);
+      const height = wrapper.offsetHeight || 0;
+      maxBottom = Math.max(maxBottom, y + height);
     });
+
     stack.style.minHeight = `${Math.ceil(maxBottom + 30)}px`;
   }
 
-  function clamp(num, min, max) {
-    return Math.min(max, Math.max(min, num));
-  }
+  function attachFreeItemInteractions(stack, wrapper, mediaElement) {
+    const resizeHandle = dom.query('.photo-resize-handle', wrapper);
+    if (!resizeHandle || wrapper.dataset.interactionBound === 'true') return;
 
-  function applyFreeItemLayout(stack, wrapper, media, x, y, w) {
-    const safeW = clamp(Number.isFinite(w) ? w : 0, 0, 100);
-    const stackW = Math.max(1, stack.clientWidth);
-    const itemPxW = (stackW * safeW) / 100;
-
-    const maxX = Math.max(0, stackW - itemPxW);
-    const clampedX = clamp(Number.isFinite(x) ? x : 0, 0, maxX);
-    const clampedY = Math.max(0, Number.isFinite(y) ? y : 0);
-
-    wrapper.dataset.x = String(clampedX);
-    wrapper.dataset.y = String(clampedY);
-    media.dataset.width = String(safeW);
-    media.style.width = '100%';
-    media.style.transform = 'none';
-
-    wrapper.style.left = `${clampedX}px`;
-    wrapper.style.top = `${clampedY}px`;
-    wrapper.style.width = `${safeW}%`;
-  }
-
-  function attachFreeItemInteractions(stack, wrapper, media) {
-    const handle = wrapper.querySelector('.photo-resize-handle');
-    if (!handle || wrapper.dataset.interactionBound === 'true') return;
     wrapper.dataset.interactionBound = 'true';
 
-    let mode = '';
-    let startX = 0;
-    let startY = 0;
-    let baseX = 0;
-    let baseY = 0;
-    let baseW = 0;
+    const drag = {
+      mode: '',
+      startX: 0,
+      startY: 0,
+      baseX: 0,
+      baseY: 0,
+      baseW: 0
+    };
 
-    const onMove = (e) => {
-      if (!mode) return;
-      const dx = e.clientX - startX;
-      const dy = e.clientY - startY;
+    const onPointerMove = (event) => {
+      if (!drag.mode) return;
 
-      if (mode === 'move') {
-        applyFreeItemLayout(stack, wrapper, media, baseX + dx, baseY + dy, baseW);
-      } else if (mode === 'resize') {
-        const nextW = baseW + (dx / Math.max(1, stack.clientWidth)) * 100;
-        applyFreeItemLayout(stack, wrapper, media, baseX, baseY, nextW);
+      const dx = event.clientX - drag.startX;
+      const dy = event.clientY - drag.startY;
+
+      if (drag.mode === 'move') {
+        applyFreeItemLayout(stack, wrapper, mediaElement, drag.baseX + dx, drag.baseY + dy, drag.baseW);
+      } else if (drag.mode === 'resize') {
+        const nextWidth = drag.baseW + (dx / Math.max(1, stack.clientWidth)) * 100;
+        applyFreeItemLayout(stack, wrapper, mediaElement, drag.baseX, drag.baseY, nextWidth);
       }
 
       ensureFreeStackHeight(stack);
-      e.preventDefault();
+      event.preventDefault();
     };
 
-    const onUp = () => {
-      if (!mode) return;
-      mode = '';
+    const onPointerEnd = () => {
+      if (!drag.mode) return;
+
+      drag.mode = '';
       wrapper.classList.remove('editing');
-      saveFreeLayout(stack);
+      saveLayoutMap(stack);
       ensureFreeStackHeight(stack);
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('pointercancel', onUp);
+
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerEnd);
+      window.removeEventListener('pointercancel', onPointerEnd);
     };
 
-    wrapper.addEventListener('pointerdown', (e) => {
-      if (e.target === handle || e.button !== 0) return;
-      mode = 'move';
-      startX = e.clientX;
-      startY = e.clientY;
-      baseX = Number(wrapper.dataset.x || 0);
-      baseY = Number(wrapper.dataset.y || 0);
-      baseW = Number(media.dataset.width || 0);
+    const beginInteraction = (mode, event) => {
+      drag.mode = mode;
+      drag.startX = event.clientX;
+      drag.startY = event.clientY;
+      drag.baseX = Number(wrapper.dataset.x || 0);
+      drag.baseY = Number(wrapper.dataset.y || 0);
+      drag.baseW = Number(mediaElement.dataset.width || 0);
+
       wrapper.classList.add('editing');
-      wrapper.style.zIndex = String(1000 + Date.now() % 100000);
-      window.addEventListener('pointermove', onMove, { passive: false });
-      window.addEventListener('pointerup', onUp);
-      window.addEventListener('pointercancel', onUp);
-      e.preventDefault();
+      wrapper.style.zIndex = String(1000 + (Date.now() % 100000));
+
+      window.addEventListener('pointermove', onPointerMove, { passive: false });
+      window.addEventListener('pointerup', onPointerEnd);
+      window.addEventListener('pointercancel', onPointerEnd);
+
+      event.preventDefault();
+    };
+
+    wrapper.addEventListener('pointerdown', (event) => {
+      if (event.target === resizeHandle || event.button !== 0) return;
+      beginInteraction('move', event);
     });
 
-    handle.addEventListener('pointerdown', (e) => {
-      if (e.button !== 0) return;
-      mode = 'resize';
-      startX = e.clientX;
-      startY = e.clientY;
-      baseX = Number(wrapper.dataset.x || 0);
-      baseY = Number(wrapper.dataset.y || 0);
-      baseW = Number(media.dataset.width || 0);
-      wrapper.classList.add('editing');
-      wrapper.style.zIndex = String(1000 + Date.now() % 100000);
-      window.addEventListener('pointermove', onMove, { passive: false });
-      window.addEventListener('pointerup', onUp);
-      window.addEventListener('pointercancel', onUp);
-      e.preventDefault();
-      e.stopPropagation();
+    resizeHandle.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
+      beginInteraction('resize', event);
+      event.stopPropagation();
     });
   }
 
-  window.enablePhotoReorder = function (container, force = false) {
-    if (!force && !reorderEnabled) return;
-    if (!container) return;
+  function createFreeItemWrapperIfNeeded(mediaElement) {
+    let wrapper = mediaElement.closest('.photo-free-item') || mediaElement.closest('.moodboard-post');
 
-    const stacks = container.querySelectorAll('.photo-stack[data-sort-key], .moodboard-grid[data-sort-key]');
-    stacks.forEach(stack => {
-      if (stack.dataset.reorderBound === 'true') return;
-      stack.dataset.reorderBound = 'true';
-      stack.classList.add('edit-freeform');
-      stack.dataset.editMode = 'freeform';
+    if (!wrapper) {
+      wrapper = document.createElement('div');
+      wrapper.className = 'photo-free-item';
+      mediaElement.parentNode.insertBefore(wrapper, mediaElement);
+      wrapper.appendChild(mediaElement);
+    } else {
+      wrapper.classList.add('photo-free-item');
+    }
 
-      // Ensure all media have src for dragging preview
-      stack.querySelectorAll('img[data-src], video[data-src]').forEach(media => {
-        if (!media.getAttribute('src')) {
-          media.setAttribute('src', media.getAttribute('data-src') || '');
-          media.classList.add('loaded');
-        }
-      });
+    if (!dom.query('.photo-resize-handle', wrapper)) {
+      const handle = document.createElement('button');
+      handle.type = 'button';
+      handle.className = 'photo-resize-handle';
+      handle.setAttribute('aria-label', 'Resize image');
+      wrapper.appendChild(handle);
+    }
 
-      const savedLayout = getSavedFreeLayout(stack);
-      // Moodboard uses .moodboard-post, projects use direct images or .photo-free-item
-      const medias = Array.from(stack.querySelectorAll('img, video, .moodboard-post'));
-      const gap = 22;
-      let yCursor = 0;
+    return wrapper;
+  }
 
-      stack.querySelectorAll('img, video').forEach((media, idx) => {
-        const key = getMediaKey(media);
-        const saved = key ? savedLayout[key] : null;
-
-        let wrapper = media.closest('.photo-free-item') || media.closest('.moodboard-post');
-        if (!wrapper) {
-          wrapper = document.createElement('div');
-          wrapper.className = 'photo-free-item';
-          media.parentNode.insertBefore(wrapper, media);
-          wrapper.appendChild(media);
-        } else {
-          wrapper.classList.add('photo-free-item');
-        }
-
-        if (!wrapper.querySelector('.photo-resize-handle')) {
-          const handle = document.createElement('button');
-          handle.type = 'button';
-          handle.className = 'photo-resize-handle';
-          handle.setAttribute('aria-label', 'Resize image');
-          wrapper.appendChild(handle);
-        }
-
-        const widthFromMedia = Number(media.dataset.width);
-        const patternDefault = [38, 28, 33, 25, 40, 30][idx % 6];
-        const w = Number.isFinite(saved?.w)
-          ? saved.w
-          : (Number.isFinite(widthFromMedia) ? widthFromMedia : patternDefault);
-
-        const aspect = media.naturalWidth > 0 ? (media.naturalHeight / media.naturalWidth) : 0.7;
-        const pxW = (Math.max(1, stack.clientWidth) * clamp(w, 0, 100)) / 100;
-        const estH = Math.max(40, pxW * aspect);
-
-        const x = Number.isFinite(saved?.x) ? saved.x : 0;
-        const y = Number.isFinite(saved?.y) ? saved.y : yCursor;
-
-        applyFreeItemLayout(stack, wrapper, media, x, y, w);
-        wrapper.style.zIndex = String(Number.isFinite(saved?.z) ? saved.z : (idx + 1));
-        yCursor = Math.max(yCursor, y + estH + gap);
-        attachFreeItemInteractions(stack, wrapper, media);
-      });
-
-      ensureFreeStackHeight(stack);
-      saveFreeLayout(stack);
-
-      const onResize = () => {
-        stack.querySelectorAll('.photo-free-item').forEach(wrapper => {
-          const media = wrapper.querySelector('img, video');
-          if (!media) return;
-          applyFreeItemLayout(
-            stack,
-            wrapper,
-            media,
-            Number(wrapper.dataset.x || 0),
-            Number(wrapper.dataset.y || 0),
-            Number(media.dataset.width || 0)
-          );
-        });
-        ensureFreeStackHeight(stack);
-      };
-      window.addEventListener('resize', onResize);
-
-      if (!stack.parentElement.querySelector('.photo-edit-controls')) {
-        const controls = document.createElement('div');
-        controls.className = 'photo-edit-controls';
-
-        const exportBtn = document.createElement('button');
-        exportBtn.type = 'button';
-        exportBtn.className = 'reorder-export-btn';
-        exportBtn.textContent = 'EXPORT FREEFORM HTML';
-
-        exportBtn.addEventListener('click', async () => {
-          const nodes = Array.from(stack.querySelectorAll('.photo-free-item'));
-          const htmlSnippet = nodes.map(wrapper => {
-            const el = wrapper.querySelector('img, video');
-            if (!el) return '';
-            const src = getMediaKey(el);
-            if (!src) return '';
-            const w = clamp(Number(el.dataset.width || 0), 0, 100);
-            const x = Math.round(Number(wrapper.dataset.x || 0));
-            const y = Math.round(Number(wrapper.dataset.y || 0));
-            const tag = el.tagName.toLowerCase();
-            return `<${tag} data-src="${src}" data-width="${w}" data-x="${x}" data-y="${y}">`;
-          }).filter(Boolean).join('\n');
-
-          const textBlock = [
-            '# HTML snippet (replace photo-stack content)',
-            htmlSnippet
-          ].join('\n');
-
-          try {
-            await navigator.clipboard.writeText(textBlock);
-            exportBtn.textContent = 'Copied';
-            setTimeout(() => { exportBtn.textContent = 'EXPORT FREEFORM HTML'; }, 1400);
-          } catch (_) {
-            window.prompt('Copy this HTML:', textBlock);
-          }
-        });
-
-        const resetBtn = document.createElement('button');
-        resetBtn.type = 'button';
-        resetBtn.className = 'reorder-export-btn';
-        resetBtn.textContent = 'Reset Positions';
-        resetBtn.addEventListener('click', () => {
-          const sortKey = stack.getAttribute('data-sort-key');
-          if (sortKey) localStorage.removeItem(`photo-layout:${sortKey}`);
-          location.reload();
-        });
-
-        controls.appendChild(exportBtn);
-        controls.appendChild(resetBtn);
-        stack.parentElement.insertBefore(controls, stack);
+  function ensureMediaSrcForEditMode(stack) {
+    dom.queryAll('img[data-src], video[data-src]', stack).forEach((mediaElement) => {
+      if (!mediaElement.getAttribute('src')) {
+        mediaElement.setAttribute('src', mediaElement.getAttribute('data-src') || '');
+        mediaElement.classList.add('loaded');
       }
     });
   }
 
+  function createEditControls(stack) {
+    if (!stack.parentElement || dom.query('.photo-edit-controls', stack.parentElement)) return;
 
-  // --- A. HEADER & GLOBAL SETTINGS ---------------------------------------
+    const controls = document.createElement('div');
+    controls.className = 'photo-edit-controls';
 
-  // 1. Last Updated
-  const modified = new Date(document.lastModified);
-  const dateOptions = { year: 'numeric', month: '2-digit', day: '2-digit' };
-  const lastUpdatedEl = document.getElementById('last-updated');
-  if (lastUpdatedEl) {
-    lastUpdatedEl.textContent = 'LAST UPDATED: ' + modified.toLocaleDateString('en-GB', dateOptions);
+    const exportButton = document.createElement('button');
+    exportButton.type = 'button';
+    exportButton.className = 'reorder-export-btn';
+    exportButton.textContent = 'EXPORT FREEFORM HTML';
+
+    exportButton.addEventListener('click', async () => {
+      const htmlSnippet = dom.queryAll('.photo-free-item', stack)
+        .map((wrapper) => {
+          const mediaElement = dom.query('img, video', wrapper);
+          const source = mediaUtils.getMediaKey(mediaElement);
+          if (!mediaElement || !source) return '';
+
+          const width = math.clamp(Number(mediaElement.dataset.width || 0), 0, 100);
+          const x = Math.round(Number(wrapper.dataset.x || 0));
+          const y = Math.round(Number(wrapper.dataset.y || 0));
+          const tagName = mediaElement.tagName.toLowerCase();
+
+          return `<${tagName} data-src="${source}" data-width="${width}" data-x="${x}" data-y="${y}">`;
+        })
+        .filter(Boolean)
+        .join('\n');
+
+      const exportText = ['# HTML snippet (replace photo-stack content)', htmlSnippet].join('\n');
+
+      try {
+        await navigator.clipboard.writeText(exportText);
+        exportButton.textContent = 'Copied';
+        motion.afterDelay(CONFIG.motion.copiedResetMs, () => {
+          exportButton.textContent = 'EXPORT FREEFORM HTML';
+        });
+      } catch (_) {
+        window.prompt('Copy this HTML:', exportText);
+      }
+    });
+
+    const resetButton = document.createElement('button');
+    resetButton.type = 'button';
+    resetButton.className = 'reorder-export-btn';
+    resetButton.textContent = 'Reset Positions';
+    resetButton.addEventListener('click', () => {
+      clearSavedLayout(stack);
+      location.reload();
+    });
+
+    controls.appendChild(exportButton);
+    controls.appendChild(resetButton);
+    stack.parentElement.insertBefore(controls, stack);
   }
 
-  // 2. Dark Mode
-  const toggle = document.getElementById('dark-toggle');
-  if (localStorage.getItem('theme') === 'dark') {
-    document.body.classList.add('dark');
+  function initFreeformStack(stack) {
+    if (stack.dataset.reorderBound === 'true') return;
+
+    stack.dataset.reorderBound = 'true';
+    stack.dataset.editMode = 'freeform';
+    stack.classList.add('edit-freeform');
+
+    ensureMediaSrcForEditMode(stack);
+
+    const savedLayout = getSavedLayoutMap(stack);
+    const gap = 22;
+    let yCursor = 0;
+
+    mediaUtils.getMediaList(stack).forEach((mediaElement, index) => {
+      const key = mediaUtils.getMediaKey(mediaElement);
+      const saved = key ? savedLayout[key] : null;
+
+      const wrapper = createFreeItemWrapperIfNeeded(mediaElement);
+
+      const widthFromMedia = Number(mediaElement.dataset.width);
+      const defaultWidthPattern = [38, 28, 33, 25, 40, 30][index % 6];
+      const widthPercent = Number.isFinite(saved?.w)
+        ? saved.w
+        : (Number.isFinite(widthFromMedia) ? widthFromMedia : defaultWidthPattern);
+
+      const x = Number.isFinite(saved?.x) ? saved.x : 0;
+      const y = Number.isFinite(saved?.y) ? saved.y : yCursor;
+
+      applyFreeItemLayout(stack, wrapper, mediaElement, x, y, widthPercent);
+      wrapper.style.zIndex = String(Number.isFinite(saved?.z) ? saved.z : (index + 1));
+
+      yCursor = Math.max(
+        yCursor,
+        y + estimateItemHeight(stack.clientWidth, widthPercent, mediaElement) + gap
+      );
+
+      attachFreeItemInteractions(stack, wrapper, mediaElement);
+    });
+
+    ensureFreeStackHeight(stack);
+    saveLayoutMap(stack);
+
+    const onResize = () => {
+      dom.queryAll('.photo-free-item', stack).forEach((wrapper) => {
+        const mediaElement = dom.query('img, video', wrapper);
+        if (!mediaElement) return;
+
+        applyFreeItemLayout(
+          stack,
+          wrapper,
+          mediaElement,
+          Number(wrapper.dataset.x || 0),
+          Number(wrapper.dataset.y || 0),
+          Number(mediaElement.dataset.width || 0)
+        );
+      });
+      ensureFreeStackHeight(stack);
+    };
+
+    window.addEventListener('resize', onResize);
+    createEditControls(stack);
   }
-  if (toggle) {
-    toggle.addEventListener('click', () => {
+
+  function enablePhotoReorder(container, force = false) {
+    if (!container) return;
+    if (!force && !appState.reorderEnabled) return;
+
+    dom.queryAll('.photo-stack[data-sort-key], .moodboard-grid[data-sort-key]', container)
+      .forEach(initFreeformStack);
+  }
+
+  window.enablePhotoReorder = enablePhotoReorder;
+
+  /* ----------------------------------------------------------------------
+     Header + Top-Level UI
+     ---------------------------------------------------------------------- */
+
+  function initLastUpdated() {
+    const lastUpdatedElement = dom.query('#last-updated');
+    if (!lastUpdatedElement) return;
+
+    const modifiedDate = new Date(document.lastModified);
+    const formatted = modifiedDate.toLocaleDateString('en-GB', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+
+    lastUpdatedElement.textContent = `LAST UPDATED: ${formatted}`;
+  }
+
+  function initDarkMode() {
+    const toggleButton = dom.query('#dark-toggle');
+
+    if (localStorage.getItem('theme') === 'dark') {
+      document.body.classList.add('dark');
+    }
+
+    if (!toggleButton) return;
+
+    toggleButton.addEventListener('click', () => {
       document.body.classList.toggle('dark');
-      localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+      const theme = document.body.classList.contains('dark') ? 'dark' : 'light';
+      localStorage.setItem('theme', theme);
     });
   }
 
-  // 3. Scroll To Top
-  const scrollLink = document.querySelector('a[href="#top"]');
-  if (scrollLink) {
-    scrollLink.addEventListener('click', (e) => {
-      e.preventDefault();
+  function initScrollToTop() {
+    const scrollLink = dom.query('a[href="#top"]');
+    if (!scrollLink) return;
+
+    scrollLink.addEventListener('click', (event) => {
+      event.preventDefault();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   }
 
-  // 4. Contact Menu
-  const contactWrapper = document.querySelector('.contact-wrapper');
-  const contactOverlay = document.getElementById('contact-overlay');
-  if (contactWrapper && contactOverlay) {
-    contactWrapper.addEventListener('click', (e) => {
-      if (contactOverlay.contains(e.target)) return;
-      e.stopPropagation();
-      e.preventDefault();
-      setTimeout(() => {
+  function initContactMenu() {
+    const contactWrapper = dom.query('.contact-wrapper');
+    const contactOverlay = dom.query('#contact-overlay');
+    if (!contactWrapper || !contactOverlay) return;
+
+    contactWrapper.addEventListener('click', (event) => {
+      if (contactOverlay.contains(event.target)) return;
+      event.stopPropagation();
+      event.preventDefault();
+      motion.afterDelay(CONFIG.motion.contactToggleDelayMs, () => {
         contactWrapper.classList.toggle('active');
-      }, 10);
+      });
     });
-    document.addEventListener('click', (e) => {
-      if (contactWrapper.classList.contains('active')) {
-        contactWrapper.classList.remove('active');
-      }
+
+    document.addEventListener('click', () => {
+      contactWrapper.classList.remove('active');
     });
   }
 
-  // 5. Footer Repeat Text (fill width without justification)
-  const repeatLine = document.querySelector('.wip-repeat');
+  function computeRepeatCount(containerWidth, phraseWidth) {
+    if (containerWidth <= 0 || phraseWidth <= 0) return 1;
+    return Math.max(1, Math.ceil(containerWidth / phraseWidth) + 1);
+  }
+
   function fillFooterRepeatLine() {
+    const repeatLine = dom.query('.wip-repeat');
     if (!repeatLine) return;
 
     const phrase = (repeatLine.dataset.phrase || 'where do i go from here?').trim();
     repeatLine.textContent = phrase;
 
-    // Build enough repeated phrases to cover visible width.
-    while (repeatLine.scrollWidth <= repeatLine.clientWidth) {
-      repeatLine.textContent += ` ${phrase}`;
-    }
-  }
-  fillFooterRepeatLine();
-  window.addEventListener('resize', fillFooterRepeatLine);
+    const phraseWidth = repeatLine.scrollWidth;
+    const repeatCount = computeRepeatCount(repeatLine.clientWidth, phraseWidth);
 
-
-  // --- B. SIDEBAR & NAVIGATION (BACK TO HOME LOGIC) ----------------------
-
-  const rightSide = document.getElementById('right-side');
-
-  if (rightSide) {
-    rightSide.addEventListener('click', (e) => {
-      // For homepage feed, make H2 titles clickable to open the project view
-      if (e.target.tagName === 'H2' && e.target.closest('.project-layout') && e.target.closest('.home-project-section')) {
-        const projectSection = e.target.closest('.home-project-section');
-        if (projectSection) {
-          const templateId = projectSection.getAttribute('data-template-id');
-          if (templateId) {
-            const projectLink = document.querySelector(`.project-wrapper a[data-template="${templateId}"]`);
-            if (projectLink) {
-              projectLink.click();
-            }
-          }
-        }
-      }
-    });
+    repeatLine.textContent = Array.from({ length: repeatCount }, () => phrase).join(' ');
   }
 
-  const nameElement = document.querySelector('.name');
-  const projectLinks = document.querySelectorAll('.project-wrapper a[data-template]');
-  let homepageFeedObserver = null;
-  let homepageActiveTicking = false;
+  function initHeaderUi() {
+    initLastUpdated();
+    initDarkMode();
+    initScrollToTop();
+    initContactMenu();
+    fillFooterRepeatLine();
+    window.addEventListener('resize', fillFooterRepeatLine);
+  }
+
+  /* ----------------------------------------------------------------------
+     Project Navigation + Homepage Feed
+     ---------------------------------------------------------------------- */
+
+  const rightSide = dom.query('#right-side');
+  const projectWrappers = dom.queryAll('.project-wrapper');
+
+  function getProjectLinks() {
+    return dom.queryAll('.project-wrapper a[data-template]');
+  }
+
+  function getTemplateClone(templateId) {
+    const template = templateId ? dom.query(`#${templateId}`) : null;
+    if (!template) return null;
+    return template.content.cloneNode(true);
+  }
+
+  function createFallbackContent() {
+    const fallback = document.createElement('div');
+    fallback.innerHTML = '<div style="padding:40px;">Content coming soon...</div>';
+    return fallback;
+  }
 
   function stopHomepageFeedObserver() {
-    if (!homepageFeedObserver) return;
-    homepageFeedObserver.disconnect();
-    homepageFeedObserver = null;
-  }
-
-  function hydrateHomepageSection(section) {
-    if (!section || section.dataset.hydrated === 'true') return;
-    const templateId = section.getAttribute('data-template-id');
-    const template = templateId ? document.getElementById(templateId) : null;
-    if (!template) return;
-
-    section.innerHTML = '';
-    section.classList.remove('home-project-shell');
-    section.dataset.hydrated = 'true';
-    section.appendChild(template.content.cloneNode(true));
-    activateLazyLoad(section);
-    enablePhotoReorder(section);
-  }
-
-  function startHomepageFeedObserver() {
-    stopHomepageFeedObserver();
-    const shells = rightSide ? rightSide.querySelectorAll('.home-project-section') : [];
-    if (!shells.length) return;
-
-    homepageFeedObserver = new IntersectionObserver((entries, observer) => {
-      entries.forEach(entry => {
-        if (!entry.isIntersecting) return;
-        hydrateHomepageSection(entry.target);
-        observer.unobserve(entry.target);
-      });
-    }, { root: null, rootMargin: '900px 0px', threshold: 0.01 });
-
-    shells.forEach(shell => homepageFeedObserver.observe(shell));
+    if (!appState.homepageObserver) return;
+    appState.homepageObserver.disconnect();
+    appState.homepageObserver = null;
   }
 
   function setHomepageActiveLink(templateId) {
-    document.querySelectorAll('.project-wrapper.homepage-active').forEach(wrapper => {
+    dom.queryAll('.project-wrapper.homepage-active').forEach((wrapper) => {
       wrapper.classList.remove('homepage-active');
     });
+
     if (!templateId) return;
-    const activeLink = document.querySelector(`.project-wrapper a[data-template="${templateId}"]`);
+
+    const activeLink = dom.query(`.project-wrapper a[data-template="${templateId}"]`);
     const activeWrapper = activeLink ? activeLink.closest('.project-wrapper') : null;
     if (activeWrapper) activeWrapper.classList.add('homepage-active');
   }
 
+  function getActiveTemplateIdByMarker(sections, markerY) {
+    let activeSection = null;
+    sections.forEach((section) => {
+      const rect = section.getBoundingClientRect();
+      if (rect.top <= markerY) activeSection = section;
+    });
+    return activeSection ? activeSection.getAttribute('data-template-id') : null;
+  }
+
   function updateHomepageActiveFromScroll() {
-    const isDesktopHome = window.innerWidth > 850 && !document.body.classList.contains('project-open');
-    if (!isDesktopHome || !rightSide) {
+    if (!rightSide) return;
+
+    const isDesktopHome = env.isDesktopViewport() && !document.body.classList.contains('project-open');
+    if (!isDesktopHome) {
       setHomepageActiveLink(null);
       return;
     }
 
-    const sections = rightSide.querySelectorAll('.home-project-section[data-template-id]');
+    const sections = dom.queryAll('.home-project-section[data-template-id]', rightSide);
     if (!sections.length) {
       setHomepageActiveLink(null);
       return;
     }
 
-    // Stable marker just below the top bar.
-    const markerY = 140;
-    let closest = null;
-
-    // Use the last section that has crossed the marker.
-    sections.forEach(section => {
-      const rect = section.getBoundingClientRect();
-      if (rect.top <= markerY) closest = section;
-    });
-
-    // Nothing active until a section reaches the marker line.
-    if (!closest) {
-      setHomepageActiveLink(null);
-      return;
-    }
-
-    const templateId = closest ? closest.getAttribute('data-template-id') : null;
-    setHomepageActiveLink(templateId);
+    setHomepageActiveLink(getActiveTemplateIdByMarker(sections, CONFIG.homepageMarkerY));
   }
 
   function scheduleHomepageActiveUpdate() {
-    if (homepageActiveTicking) return;
-    homepageActiveTicking = true;
-    requestAnimationFrame(() => {
-      homepageActiveTicking = false;
+    if (appState.homepageTicking) return;
+
+    appState.homepageTicking = true;
+    motion.onNextFrame(() => {
+      appState.homepageTicking = false;
       updateHomepageActiveFromScroll();
     });
   }
 
+  function hydrateHomepageSection(section) {
+    if (!section || section.dataset.hydrated === 'true') return;
+
+    const templateId = section.getAttribute('data-template-id');
+    const content = getTemplateClone(templateId);
+    if (!content) return;
+
+    section.innerHTML = '';
+    section.classList.remove('home-project-shell');
+    section.dataset.hydrated = 'true';
+    section.appendChild(content);
+
+    activateLazyLoad(section);
+    enablePhotoReorder(section);
+    enableTextEditing(section);
+  }
+
+  function startHomepageFeedObserver() {
+    if (!rightSide) return;
+
+    stopHomepageFeedObserver();
+    const shells = dom.queryAll('.home-project-section', rightSide);
+    if (!shells.length) return;
+
+    appState.homepageObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        hydrateHomepageSection(entry.target);
+        observer.unobserve(entry.target);
+      });
+    }, { root: null, rootMargin: CONFIG.homepageHydrationRootMargin, threshold: 0.01 });
+
+    shells.forEach(shell => appState.homepageObserver.observe(shell));
+  }
+
   function renderHomepageFeed() {
     if (!rightSide) return;
-    const isDesktop = window.innerWidth > 850;
 
-    // Homepage feed only on desktop landing state.
-    if (!isDesktop || document.body.classList.contains('project-open')) {
+    const isDesktopHome = env.isDesktopViewport() && !document.body.classList.contains('project-open');
+    if (!isDesktopHome) {
       stopHomepageFeedObserver();
-      if (!document.body.classList.contains('project-open')) rightSide.innerHTML = '';
+      if (!document.body.classList.contains('project-open')) dom.clear(rightSide);
       setHomepageActiveLink(null);
       return;
     }
 
     stopHomepageFeedObserver();
-    rightSide.innerHTML = '';
-    const frag = document.createDocumentFragment();
+    dom.clear(rightSide);
 
-    projectLinks.forEach(link => {
+    const fragment = document.createDocumentFragment();
+
+    getProjectLinks().forEach((link) => {
       const templateId = link.getAttribute('data-template');
-      if (!templateId || !document.getElementById(templateId)) return;
-      if (templateId === 'content-about') return;
-      const label = (link.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!templateId || templateId === 'content-about' || !dom.query(`#${templateId}`)) return;
 
+      const label = (link.textContent || '').replace(/\s+/g, ' ').trim();
       const section = document.createElement('section');
+
       section.className = 'content-enter visible home-project-section home-project-shell';
       section.setAttribute('data-template-id', templateId);
       section.setAttribute('data-hydrated', 'false');
       section.innerHTML = `<p class="home-project-shell-label">${label}</p>`;
-      frag.appendChild(section);
+
+      fragment.appendChild(section);
     });
 
-    rightSide.appendChild(frag);
+    rightSide.appendChild(fragment);
     startHomepageFeedObserver();
     scheduleHomepageActiveUpdate();
   }
 
-  function resetProjects() {
-    document.querySelectorAll('.project-wrapper').forEach(wrapper => {
-      wrapper.classList.remove('active');
-      const text = wrapper.querySelector('.project-text');
-      if (text) {
-        text.style.maxHeight = null;
-        text.style.opacity = null;
-        text.style.marginTop = null;
-      }
-      // Reset buttons text
-      const btn = wrapper.querySelector('.toggle-btn');
-      if (btn) btn.textContent = "Show More +";
+  function resetProjectDetails(wrapper) {
+    wrapper.classList.remove('active', 'homepage-active');
 
-      const hiddenContent = wrapper.querySelector('.info-collapsible');
-      if (hiddenContent) {
-        hiddenContent.classList.remove('expanded');
-        hiddenContent.style.display = ''; // Clear any legacy inline styles
-      }
+    const detailText = dom.query('.project-text', wrapper);
+    if (detailText) {
+      detailText.style.maxHeight = '';
+      detailText.style.opacity = '';
+      detailText.style.marginTop = '';
+    }
+
+    const popout = dom.query('.project-popout', wrapper);
+    if (popout) popout.style.opacity = '0';
+
+    const toggleButton = dom.query('.toggle-btn', wrapper);
+    if (toggleButton) toggleButton.textContent = 'Show More +';
+
+    const hiddenContent = dom.query('.info-collapsible', wrapper);
+    if (hiddenContent) {
+      hiddenContent.classList.remove('expanded');
+      hiddenContent.style.display = '';
+    }
+  }
+
+  function resetAllProjects(exceptWrapper = null) {
+    projectWrappers.forEach((wrapper) => {
+      if (wrapper === exceptWrapper) return;
+      resetProjectDetails(wrapper);
     });
   }
 
-  if (nameElement) {
-    nameElement.addEventListener('click', () => {
-      // 1. REMOVE THE CLASS (Triggers transition back to Landing Layout)
-      document.body.classList.remove('project-open');
+  function alignPopoutToFirstProject() {
+    const firstLink = dom.query('.project-wrapper:first-child a');
+    if (!firstLink) return;
 
-      // 2. Clear the Right Side Content
-      if (rightSide) {
-        rightSide.innerHTML = '';
-      }
+    const rect = firstLink.getBoundingClientRect();
+    const top = rect.top + CONFIG.popoutOffset;
+    document.documentElement.style.setProperty('--popout-top', `${top}px`);
+  }
 
-      resetProjects();
-      renderHomepageFeed();
+  function openDesktopProject(wrapper, link) {
+    if (!rightSide) return;
+
+    document.body.classList.add('project-open');
+    setHomepageActiveLink(null);
+
+    if (wrapper.classList.contains('active')) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  }
-
-
-  // --- C. PROJECT SYSTEM (OPEN PROJECT LOGIC) ----------------------------
-
-  const projectWrappers = document.querySelectorAll('.project-wrapper');
-
-  // 1. Align Popout
-  function alignPopout() {
-    const firstLink = document.querySelector('.project-wrapper:first-child a');
-    if (firstLink) {
-      const rect = firstLink.getBoundingClientRect();
-      const offset = -10;
-      const finalTop = rect.top + offset;
-      document.documentElement.style.setProperty('--popout-top', `${finalTop}px`);
+      return;
     }
+
+    resetAllProjects(wrapper);
+    wrapper.classList.add('active');
+
+    const detailText = dom.query('.project-text', wrapper);
+    if (detailText) {
+      detailText.style.maxHeight = `${detailText.scrollHeight}px`;
+      detailText.style.opacity = '1';
+      detailText.style.marginTop = `${CONFIG.detailExpandedMarginTopPx}px`;
+    }
+
+    dom.clear(rightSide);
+
+    const templateId = link.getAttribute('data-template');
+    const contentWrapper = document.createElement('div');
+    contentWrapper.className = 'content-enter';
+
+    const content = getTemplateClone(templateId) || createFallbackContent();
+    contentWrapper.appendChild(content);
+
+    rightSide.appendChild(contentWrapper);
+
+    activateLazyLoad(contentWrapper);
+    enablePhotoReorder(contentWrapper);
+    enableTextEditing(contentWrapper);
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    motion.revealWithClass(contentWrapper, 'visible', CONFIG.motion.revealDelayMs);
   }
-  alignPopout();
-  window.addEventListener('resize', alignPopout);
-  window.addEventListener('resize', renderHomepageFeed);
-  window.addEventListener('resize', scheduleHomepageActiveUpdate);
-  window.addEventListener('scroll', scheduleHomepageActiveUpdate, { passive: true });
-  renderHomepageFeed();
 
-  // 2. Project Hover Logic
-  projectWrappers.forEach(wrapper => {
-    const popoutContainer = wrapper.querySelector('.project-popout');
-    const media = wrapper.querySelector('.project-popout img, .project-popout video');
-    const link = wrapper.querySelector('a');
-    const previewSrc = link ? link.getAttribute('data-image') : null;
+  function ensureMobileBackButton(onBack) {
+    const topBarRight = dom.query('.top-bar .right');
+    if (!topBarRight) return null;
 
-    if (popoutContainer && media) {
+    const existing = dom.query('#mobile-back-btn');
+    if (existing) existing.remove();
+
+    const button = document.createElement('a');
+    button.id = 'mobile-back-btn';
+    button.href = '#';
+    button.textContent = '← Back';
+    button.addEventListener('click', onBack);
+
+    topBarRight.insertBefore(button, topBarRight.firstChild);
+    return button;
+  }
+
+  function createMobileProjectView(templateId) {
+    const existingView = dom.query('.mobile-project-view');
+    if (existingView) existingView.remove();
+
+    const updatedLabel = dom.query('.top-bar .left .updated');
+    if (updatedLabel) updatedLabel.style.display = 'none';
+
+    const onBack = (event) => {
+      event.preventDefault();
+
+      const mobileView = dom.query('.mobile-project-view');
+      if (mobileView) {
+        mobileView.classList.remove('active');
+        motion.afterDelay(CONFIG.motion.mobileCloseMs, () => mobileView.remove());
+      }
+
+      const backButton = dom.query('#mobile-back-btn');
+      if (backButton) backButton.remove();
+
+      if (updatedLabel) updatedLabel.style.display = '';
+    };
+
+    ensureMobileBackButton(onBack);
+
+    const mobileView = document.createElement('div');
+    mobileView.className = 'mobile-project-view';
+
+    const content = document.createElement('div');
+    content.className = 'mobile-project-content';
+
+    const templateContent = getTemplateClone(templateId) || createFallbackContent();
+    content.appendChild(templateContent);
+
+    mobileView.appendChild(content);
+    document.body.appendChild(mobileView);
+
+    motion.onNextFrame(() => mobileView.classList.add('active'));
+
+    activateLazyLoad(content);
+    enablePhotoReorder(content);
+    enableTextEditing(content);
+  }
+
+  function initProjectHoverPreview() {
+    projectWrappers.forEach((wrapper) => {
+      const popout = dom.query('.project-popout', wrapper);
+      const mediaElement = dom.query('.project-popout img, .project-popout video', wrapper);
+      const link = dom.query('a[data-template]', wrapper);
+      const previewSource = link ? link.getAttribute('data-image') : null;
+
+      if (!popout || !mediaElement || !previewSource) return;
+
       wrapper.addEventListener('mouseenter', () => {
-        if (previewSrc) {
-          media.src = previewSrc;
-          if (media.tagName === 'VIDEO') {
-            media.play().catch(e => { });
-          }
-          if (!wrapper.classList.contains('active')) {
-            popoutContainer.style.opacity = "1";
-          }
+        if (!env.isDesktopViewport() || wrapper.classList.contains('active')) return;
+
+        mediaElement.src = previewSource;
+        if (mediaElement.tagName === 'VIDEO') {
+          mediaElement.play().catch(() => { /* Ignore autoplay errors. */ });
         }
+
+        popout.style.opacity = '1';
       });
+
       wrapper.addEventListener('mouseleave', () => {
-        popoutContainer.style.opacity = "0";
-        if (media.tagName === 'VIDEO') {
-          media.pause();
-        }
+        popout.style.opacity = '0';
+        if (mediaElement.tagName === 'VIDEO') mediaElement.pause();
       });
-    }
-  });
-
-  // 3. Project Click Logic
-  projectWrappers.forEach(wrapper => {
-    const link = wrapper.querySelector('a');
-
-    if (link) {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-
-        const isMobile = window.innerWidth <= 850;
-
-        // --- 1. ACTIVATE LANDING TRANSITION (Desktop Only) ---
-        if (!isMobile) {
-          document.body.classList.add('project-open');
-          setHomepageActiveLink(null);
-        }
-
-        // --- CHECK: ALREADY OPEN? ---
-        if (wrapper.classList.contains('active')) {
-          if (isMobile) {
-            wrapper.classList.remove('active');
-            const existing = wrapper.querySelector('.mobile-content-inject');
-            if (existing) existing.remove();
-
-            const details = wrapper.querySelector('.project-text');
-            if (details) {
-              details.style.maxHeight = null;
-              details.style.opacity = null;
-              details.style.marginTop = null;
-            }
-          } else {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }
-          return;
-        }
-
-        // --- RESET OTHERS ---
-        document.querySelectorAll('.project-wrapper').forEach(w => {
-          if (w !== wrapper) {
-            w.classList.remove('active');
-            const text = w.querySelector('.project-text');
-            const mobileContent = w.querySelector('.mobile-content-inject');
-            const otherPopout = w.querySelector('.project-popout');
-            const btn = w.querySelector('.toggle-btn');
-            const hidden = w.querySelector('.info-collapsible');
-
-            if (otherPopout) otherPopout.style.opacity = "0";
-            if (text) {
-              text.style.maxHeight = null;
-              text.style.opacity = null;
-              text.style.marginTop = null;
-            }
-            if (mobileContent) mobileContent.remove();
-
-            // Reset Accordions
-            if (btn) btn.textContent = "Show More +";
-            if (hidden) hidden.style.display = '';
-          }
-        });
-
-        // --- ACTIVATE CURRENT ---
-        wrapper.classList.add('active');
-
-        // Hide CURRENT popout
-        const currentPopout = wrapper.querySelector('.project-popout');
-        if (currentPopout) currentPopout.style.opacity = "0";
-
-        // Open Sidebar Text (Left Side)
-        const details = wrapper.querySelector('.project-text');
-        if (details) {
-          details.style.maxHeight = details.scrollHeight + 'px';
-          details.style.opacity = 1;
-          details.style.marginTop = '5px';
-        }
-
-        // --- LOAD CONTENT ---
-        if (isMobile) {
-          // MOBILE INJECTION
-          const existing = wrapper.querySelector('.mobile-content-inject');
-          if (existing) existing.remove();
-
-          const templateId = link.getAttribute('data-template');
-          const template = document.getElementById(templateId);
-          const inlineContainer = document.createElement('div');
-          inlineContainer.className = 'mobile-content-inject';
-
-          if (template) {
-            inlineContainer.appendChild(template.content.cloneNode(true));
-          } else {
-            inlineContainer.innerHTML = `<div style="padding:20px;">Content coming soon...</div>`;
-          }
-
-          wrapper.appendChild(inlineContainer);
-          activateLazyLoad(inlineContainer);
-          enablePhotoReorder(inlineContainer);
-          enableTextEditing(inlineContainer);
-          requestAnimationFrame(() => inlineContainer.style.opacity = "1");
-
-        } else {
-          // DESKTOP INJECTION (Right Side)
-          if (rightSide) {
-            rightSide.innerHTML = '';
-            const templateId = link.getAttribute('data-template');
-            const template = document.getElementById(templateId);
-            const contentWrapper = document.createElement('div');
-            contentWrapper.className = 'content-enter';
-
-            if (template) contentWrapper.appendChild(template.content.cloneNode(true));
-            else contentWrapper.innerHTML = `<div style="padding:40px;">Content coming soon...</div>`;
-
-            rightSide.appendChild(contentWrapper);
-            activateLazyLoad(contentWrapper);
-            enablePhotoReorder(contentWrapper);
-            enableTextEditing(contentWrapper);
-
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            setTimeout(() => contentWrapper.classList.add('visible'), 10);
-          }
-        }
-      });
-    }
-  });
-
-
-  // --- D. LIGHTBOX SYSTEM ------------------------------------------------
-
-  const lightbox = document.getElementById('lightbox');
-  const lightboxImg = document.getElementById('lightbox-img');
-  const prevBtn = document.querySelector('.lightbox-prev');
-  const nextBtn = document.querySelector('.lightbox-next');
-
-  let currentImages = [];
-  let currentIndex = 0;
-
-  // 1. Open Lightbox
-  document.addEventListener('click', (e) => {
-    if (reorderEnabled) return;
-
-    // Carousel Click-to-Scroll Logic
-    const carousel = e.target.closest('.carousel');
-    if (carousel) {
-      const rect = carousel.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const width = rect.width;
-
-      // Left 35% -> Scroll Left
-      if (x < width * 0.35) {
-        carousel.scrollBy({ left: -width * 0.6, behavior: 'smooth' });
-        return;
-      }
-      // Right 35% -> Scroll Right
-      else if (x > width * 0.65) {
-        carousel.scrollBy({ left: width * 0.6, behavior: 'smooth' });
-        return;
-      }
-    }
-
-    if (e.target.tagName === 'IMG') {
-      const container = e.target.closest('.temp-grid') ||
-        e.target.closest('.photo-stack');
-
-      if (container) {
-        const images = container.querySelectorAll('img');
-        currentImages = Array.from(images).map(img => img.src || img.dataset.src);
-        currentIndex = currentImages.indexOf(e.target.src) !== -1
-          ? currentImages.indexOf(e.target.src)
-          : currentImages.indexOf(e.target.dataset.src);
-
-        if (currentIndex === -1) currentIndex = 0;
-
-        updateLightboxImage();
-        lightbox.classList.add('active');
-      }
-    }
-  });
-
-  // 2. Update Image
-  function updateLightboxImage() {
-    lightboxImg.classList.add('lightbox-switching');
-    setTimeout(() => {
-      lightboxImg.src = currentImages[currentIndex];
-
-      const nextIndex = (currentIndex + 1) % currentImages.length;
-      new Image().src = currentImages[nextIndex];
-
-      requestAnimationFrame(() => {
-        lightboxImg.classList.remove('lightbox-switching');
-      });
-    }, 150);
-  }
-
-  // 3. Controls
-  function showNext() {
-    currentIndex = (currentIndex + 1) % currentImages.length;
-    updateLightboxImage();
-  }
-  function showPrev() {
-    currentIndex = (currentIndex - 1 + currentImages.length) % currentImages.length;
-    updateLightboxImage();
-  }
-
-  if (nextBtn) nextBtn.addEventListener('click', (e) => { e.stopPropagation(); showNext(); });
-  if (prevBtn) prevBtn.addEventListener('click', (e) => { e.stopPropagation(); showPrev(); });
-
-  if (lightbox) {
-    lightbox.addEventListener('click', (e) => {
-      if (e.target !== lightboxImg && e.target !== nextBtn && e.target !== prevBtn) {
-        lightbox.classList.remove('active');
-      }
     });
   }
 
-  document.addEventListener('keydown', (e) => {
-    if (!lightbox || !lightbox.classList.contains('active')) return;
-    if (e.key === 'Escape') lightbox.classList.remove('active');
-    if (e.key === 'ArrowRight') showNext();
-    if (e.key === 'ArrowLeft') showPrev();
-  });
+  function initProjectNavigationEvents() {
+    if (!rightSide) return;
+
+    rightSide.addEventListener('click', (event) => {
+      const targetTitle = event.target.closest('.home-project-section .project-layout h2');
+      if (!targetTitle) return;
+
+      const section = targetTitle.closest('.home-project-section');
+      const templateId = section ? section.getAttribute('data-template-id') : '';
+      const projectLink = templateId
+        ? dom.query(`.project-wrapper a[data-template="${templateId}"]`)
+        : null;
+
+      if (projectLink) projectLink.click();
+    });
+
+    document.addEventListener('click', (event) => {
+      const projectLink = event.target.closest('.project-wrapper a[data-template]');
+      if (!projectLink) return;
+
+      event.preventDefault();
+      const wrapper = projectLink.closest('.project-wrapper');
+      if (!wrapper) return;
+
+      const templateId = projectLink.getAttribute('data-template');
+      if (!templateId) return;
+
+      if (env.isMobileViewport()) {
+        createMobileProjectView(templateId);
+      } else {
+        openDesktopProject(wrapper, projectLink);
+      }
+    });
+
+    const nameElement = dom.query('.name');
+    if (nameElement) {
+      nameElement.addEventListener('click', () => {
+        document.body.classList.remove('project-open');
+        if (rightSide) dom.clear(rightSide);
+        resetAllProjects();
+        renderHomepageFeed();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+  }
+
+  function initProjectSystem() {
+    alignPopoutToFirstProject();
+    renderHomepageFeed();
+    initProjectHoverPreview();
+    initProjectNavigationEvents();
+
+    window.addEventListener('resize', alignPopoutToFirstProject);
+    window.addEventListener('resize', renderHomepageFeed);
+    window.addEventListener('resize', scheduleHomepageActiveUpdate);
+    window.addEventListener('scroll', scheduleHomepageActiveUpdate, { passive: true });
+  }
+
+  /* ----------------------------------------------------------------------
+     Lightbox
+     ---------------------------------------------------------------------- */
+
+  const lightboxElements = {
+    container: dom.query('#lightbox'),
+    image: dom.query('#lightbox-img'),
+    prevButton: dom.query('.lightbox-prev'),
+    nextButton: dom.query('.lightbox-next')
+  };
+
+  function collectLightboxImages(fromImage) {
+    const container = fromImage.closest('.temp-grid') || fromImage.closest('.photo-stack');
+    if (!container) return { images: [], activeIndex: 0 };
+
+    const images = dom.queryAll('img', container)
+      .map(img => img.src || img.dataset.src)
+      .filter(Boolean);
+
+    const source = fromImage.src || fromImage.dataset.src;
+    const activeIndex = Math.max(0, images.indexOf(source));
+
+    return { images, activeIndex };
+  }
+
+  function updateLightboxImage() {
+    const { image } = lightboxElements;
+    if (!image || appState.lightboxImages.length === 0) return;
+
+    image.classList.add('lightbox-switching');
+
+    motion.afterDelay(CONFIG.motion.lightboxSwitchMs, () => {
+      image.src = appState.lightboxImages[appState.lightboxIndex];
+
+      const nextIndex = math.mod(appState.lightboxIndex + 1, appState.lightboxImages.length);
+      new Image().src = appState.lightboxImages[nextIndex];
+
+      motion.onNextFrame(() => {
+        image.classList.remove('lightbox-switching');
+      });
+    });
+  }
+
+  function openLightbox(imageElement) {
+    const { container } = lightboxElements;
+    if (!container) return;
+
+    const lightboxData = collectLightboxImages(imageElement);
+    if (!lightboxData.images.length) return;
+
+    appState.lightboxImages = lightboxData.images;
+    appState.lightboxIndex = lightboxData.activeIndex;
+
+    updateLightboxImage();
+    container.classList.add('active');
+  }
+
+  function closeLightbox() {
+    const { container } = lightboxElements;
+    if (container) container.classList.remove('active');
+  }
+
+  function showNextLightboxImage() {
+    if (!appState.lightboxImages.length) return;
+    appState.lightboxIndex = math.mod(appState.lightboxIndex + 1, appState.lightboxImages.length);
+    updateLightboxImage();
+  }
+
+  function showPreviousLightboxImage() {
+    if (!appState.lightboxImages.length) return;
+    appState.lightboxIndex = math.mod(appState.lightboxIndex - 1, appState.lightboxImages.length);
+    updateLightboxImage();
+  }
+
+  function handleCarouselClick(event) {
+    const carousel = event.target.closest('.carousel');
+    if (!carousel) return false;
+
+    const rect = carousel.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const width = rect.width;
+
+    if (x < width * 0.35) {
+      carousel.scrollBy({ left: -width * 0.6, behavior: 'smooth' });
+      return true;
+    }
+
+    if (x > width * 0.65) {
+      carousel.scrollBy({ left: width * 0.6, behavior: 'smooth' });
+      return true;
+    }
+
+    return false;
+  }
+
+  function initLightbox() {
+    const { container, image, prevButton, nextButton } = lightboxElements;
+
+    document.addEventListener('click', (event) => {
+      if (appState.reorderEnabled) return;
+      if (handleCarouselClick(event)) return;
+
+      const clickedImage = event.target.closest('img');
+      if (!clickedImage) return;
+
+      openLightbox(clickedImage);
+    });
+
+    if (nextButton) {
+      nextButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        showNextLightboxImage();
+      });
+    }
+
+    if (prevButton) {
+      prevButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        showPreviousLightboxImage();
+      });
+    }
+
+    if (container) {
+      container.addEventListener('click', (event) => {
+        if (event.target !== image && event.target !== nextButton && event.target !== prevButton) {
+          closeLightbox();
+        }
+      });
+    }
+
+    document.addEventListener('keydown', (event) => {
+      if (!container || !container.classList.contains('active')) return;
+
+      if (event.key === 'Escape') closeLightbox();
+      if (event.key === 'ArrowRight') showNextLightboxImage();
+      if (event.key === 'ArrowLeft') showPreviousLightboxImage();
+    });
+  }
+
+  /* ----------------------------------------------------------------------
+     Text Editing (Edit Mode)
+     ---------------------------------------------------------------------- */
+
+  function createExportModal(content) {
+    const modal = document.createElement('div');
+    Object.assign(modal.style, {
+      position: 'fixed',
+      top: '0',
+      left: '0',
+      width: '100%',
+      height: '100%',
+      background: 'rgba(0,0,0,0.8)',
+      zIndex: 100001,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    });
+
+    const textarea = document.createElement('textarea');
+    textarea.value = content.trim();
+    Object.assign(textarea.style, {
+      width: '80%',
+      height: '80%',
+      fontFamily: 'monospace',
+      fontSize: '12px',
+      padding: '10px'
+    });
+
+    const closeButton = document.createElement('button');
+    closeButton.textContent = 'CLOSE';
+    Object.assign(closeButton.style, {
+      position: 'absolute',
+      top: '20px',
+      right: '20px',
+      padding: '10px',
+      background: 'white',
+      border: 'none',
+      cursor: 'pointer'
+    });
+    closeButton.onclick = () => modal.remove();
+
+    modal.appendChild(textarea);
+    modal.appendChild(closeButton);
+
+    return modal;
+  }
+
+  function normalizeExportHtml(container) {
+    const clone = container.cloneNode(true);
+
+    dom.queryAll('[contenteditable]', clone).forEach((element) => {
+      element.removeAttribute('contenteditable');
+      element.removeAttribute('style');
+    });
+
+    dom.queryAll('.photo-edit-controls, .reorder-export-btn, .photo-resize-handle', clone)
+      .forEach((element) => element.remove());
+
+    return clone.innerHTML;
+  }
+
+  function ensureGlobalExportButton() {
+    if (dom.query('#global-export-btn')) return;
+
+    const exportButton = document.createElement('button');
+    exportButton.id = 'global-export-btn';
+    exportButton.textContent = 'EXPORT PROJECT HTML';
+
+    Object.assign(exportButton.style, {
+      position: 'fixed',
+      bottom: '20px',
+      right: '20px',
+      zIndex: 100000,
+      padding: '10px 20px',
+      background: 'blue',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer',
+      fontWeight: 'bold'
+    });
+
+    exportButton.addEventListener('click', () => {
+      const activeContainer =
+        dom.query('.content-enter') ||
+        dom.query('.mobile-project-content') ||
+        dom.query('.mobile-content-inject');
+      if (!activeContainer) {
+        alert('No active project found.');
+        return;
+      }
+
+      const modal = createExportModal(normalizeExportHtml(activeContainer));
+      document.body.appendChild(modal);
+    });
+
+    document.body.appendChild(exportButton);
+  }
 
   function enableTextEditing(container) {
-    if (!reorderEnabled || !container) return;
+    if (!appState.reorderEnabled || !container) return;
 
-    const editables = container.querySelectorAll('h2, .summary-col p, .detail-text p, .detail-text, h3, h4, li, .about-text p');
-    editables.forEach(el => {
-      el.setAttribute('contenteditable', 'true');
-      el.style.outline = '1px dashed #ccc';
-      el.style.minWidth = '10px';
-      el.addEventListener('focus', () => el.style.outline = '1px solid blue');
-      el.addEventListener('blur', () => el.style.outline = '1px dashed #ccc');
+    const selectors = 'h2, .summary-col p, .detail-text p, .detail-text, h3, h4, li, .about-text p';
+    dom.queryAll(selectors, container).forEach((element) => {
+      element.setAttribute('contenteditable', 'true');
+      element.style.outline = '1px dashed #ccc';
+      element.style.minWidth = '10px';
+
+      element.addEventListener('focus', () => { element.style.outline = '1px solid blue'; });
+      element.addEventListener('blur', () => { element.style.outline = '1px dashed #ccc'; });
     });
 
-    if (!document.getElementById('global-export-btn')) {
-      const btn = document.createElement('button');
-      btn.id = 'global-export-btn';
-      btn.textContent = 'EXPORT PROJECT HTML';
-      Object.assign(btn.style, {
-        position: 'fixed', bottom: '20px', right: '20px', zIndex: 100000,
-        padding: '10px 20px', background: 'blue', color: 'white',
-        border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold'
-      });
-      document.body.appendChild(btn);
-
-      btn.addEventListener('click', () => {
-        const activeContainer = document.querySelector('.content-enter') || document.querySelector('.mobile-content-inject');
-        if (!activeContainer) return alert('No active project found.');
-
-        const clone = activeContainer.cloneNode(true);
-        clone.querySelectorAll('[contenteditable]').forEach(el => {
-          el.removeAttribute('contenteditable');
-          el.removeAttribute('style');
-        });
-
-        clone.querySelectorAll('.photo-edit-controls, .reorder-export-btn, .photo-resize-handle').forEach(el => el.remove());
-
-        let html = clone.innerHTML;
-
-        const modal = document.createElement('div');
-        Object.assign(modal.style, {
-          position: 'fixed', top: '0', left: '0', width: '100%', height: '100%',
-          background: 'rgba(0,0,0,0.8)', zIndex: 100001, display: 'flex',
-          alignItems: 'center', justifyContent: 'center'
-        });
-
-        const textarea = document.createElement('textarea');
-        textarea.value = html.trim();
-        Object.assign(textarea.style, {
-          width: '80%', height: '80%', fontFamily: 'monospace', fontSize: '12px', padding: '10px'
-        });
-
-        const close = document.createElement('button');
-        close.textContent = 'CLOSE';
-        Object.assign(close.style, {
-          position: 'absolute', top: '20px', right: '20px', padding: '10px',
-          background: 'white', border: 'none', cursor: 'pointer'
-        });
-        close.onclick = () => modal.remove();
-
-        modal.appendChild(textarea);
-        modal.appendChild(close);
-        document.body.appendChild(modal);
-      });
-    }
+    ensureGlobalExportButton();
   }
 
+  /* ----------------------------------------------------------------------
+     Bootstrap
+     ---------------------------------------------------------------------- */
+
+  initHeaderUi();
+  initProjectSystem();
+  initLightbox();
+
+  // Initial lazy load pass for static content.
+  activateLazyLoad(document);
+
+  // Make available for other existing integrations.
+  window.enableTextEditing = enableTextEditing;
 });

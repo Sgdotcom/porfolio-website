@@ -19,3 +19,4 @@ site-packages/
 
 # macOS
 .DS_Store
+.pycache/
