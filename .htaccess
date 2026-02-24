@@ -30,6 +30,18 @@
   ExpiresByType application/font-woff "access plus 1 year"
 </IfModule>
 
+# Cache control for JSON files
+<Files "*.json">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+</Files>
+
+# Enable CORS for all requests
+Header always set Access-Control-Allow-Origin "*"
+Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+Header always set Access-Control-Allow-Headers "Content-Type"
+
 # Add ETag
 FileETag MTime Size
 

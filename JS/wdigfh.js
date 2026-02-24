@@ -32,7 +32,9 @@
       tablet: 5,
       desktop: 10
     },
-    unitAspectRatio: 4 / 3
+    unitAspectRatio: 4 / 3,
+    maxRetries: 3,
+    retryDelayMs: 1000
   };
 
   const state = {
@@ -485,15 +487,30 @@
     dom.grid.appendChild(fragment);
   }
 
-  async function loadMoodboardGallery() {
+  async function loadMoodboardGallery(retryCount = 0) {
     if (!dom.grid) return;
 
     try {
-      const response = await fetch(CONFIG.manifestUrl, { cache: 'no-store' });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const response = await fetch(CONFIG.manifestUrl, { 
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
 
       const payload = await response.json();
       const items = Array.isArray(payload && payload.items) ? payload.items : [];
+      
+      if (!items.length) {
+        console.warn('No items found in gallery manifest');
+        return;
+      }
+
       const anchor = dom.grid.querySelector('.moodboard-post.text-only, .moodboard-post.wide-text');
 
       dom.grid.querySelectorAll('.moodboard-post.auto-generated').forEach((node) => node.remove());
@@ -512,12 +529,29 @@
 
       applySavedOrder();
       applyLayout();
+      
+      console.log(`Successfully loaded ${items.length} gallery items`);
+      
     } catch (error) {
-      console.warn('Failed to load moodboard gallery manifest', error);
-      if (window.location.protocol === 'file:' && dom.grid) {
+      console.error(`Failed to load moodboard gallery manifest (attempt ${retryCount + 1}):`, error);
+      
+      // Retry logic
+      if (retryCount < CONFIG.maxRetries) {
+        console.log(`Retrying in ${CONFIG.retryDelayMs}ms...`);
+        setTimeout(() => loadMoodboardGallery(retryCount + 1), CONFIG.retryDelayMs);
+        return;
+      }
+      
+      // Show user-friendly error message after all retries failed
+      if (dom.grid) {
         const errorMsg = document.createElement('div');
         errorMsg.style.cssText = 'grid-column: 1/-1; padding: 40px; text-align: center; color: var(--accent); background: rgba(0,0,0,0.05); border-radius: 8px; margin: 20px;';
-        errorMsg.innerHTML = '<h3>Local Testing Note</h3><p>To view the gallery images, this page needs to be served via a local web server (CORS requirement).</p><p style="font-size: 0.9em; opacity: 0.8;">Run <strong>python -m http.server</strong> in your project folder and visit <strong>localhost:8000/wdigfh.html</strong></p>';
+        errorMsg.innerHTML = `
+          <h3>Gallery Loading Issue</h3>
+          <p>Unable to load the gallery images after multiple attempts. This might be a temporary issue.</p>
+          <p style="font-size: 0.9em; opacity: 0.8;">Error: ${error.message}</p>
+          <button onclick="location.reload()" style="margin-top: 10px; padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer;">Retry</button>
+        `;
         dom.grid.appendChild(errorMsg);
       }
     }
