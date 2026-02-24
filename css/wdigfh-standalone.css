@@ -43,7 +43,7 @@ body {
 .moodboard-post {
   background: var(--bg);
   overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.3s ease;
   cursor: pointer;
   position: relative;
   aspect-ratio: 3 / 4;
@@ -56,16 +56,9 @@ body {
   transform: scale(1.005) translateZ(0); /* Scale slightly to hide sub-pixel grid lines */
 }
 
-.moodboard-post:hover {
-  transform: scale(1.05);
-  z-index: 10;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-}
-
 .moodboard-post.text-placeholder {
   background: #0a0a0a;
   border-radius: 6px;
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.25);
   opacity: 0.7;
   transition: opacity 0.3s ease;
   display: flex;
@@ -77,6 +70,11 @@ body {
 
 .moodboard-post.text-placeholder:hover {
   opacity: 1;
+}
+
+.moodboard-post:hover {
+  transform: scale(1.05);
+  z-index: 10;
 }
 
 .moodboard-post.text-placeholder .placeholder-body {
@@ -91,6 +89,7 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   display: block !important;
   position: absolute;
   top: 0;
@@ -110,6 +109,7 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   display: block !important;
   position: absolute;
   top: 0;
@@ -124,90 +124,30 @@ body {
   opacity: 1;
 }
 
-.moodboard-post.text-break {
-  background: #ffffff;
-  color: #000000;
-  padding: 30px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  min-height: 200px;
-  position: relative;
-  overflow: visible;
-  z-index: 100;
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-}
-
+/* Simplified text block styling */
 .moodboard-post.text-only,
+.moodboard-post.text-break,
 .moodboard-post.wide-text {
   background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.08);
-  padding: 25px;
   color: #000000;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 15px;
-  min-height: 180px;
-  line-height: 1.6;
-  letter-spacing: 0.02em;
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-}
-
-.moodboard-post.text-only .text-only-content {
-  width: 100%;
-  min-height: 140px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: #000000;
-  padding: 5px 10px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   text-align: center;
-}
-
-.moodboard-post.text-only h3,
-.moodboard-post.wide-text h3 {
-  font-size: clamp(16px, 2vw, 20px);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin-bottom: 10px;
-  display: none;
+  min-height: 180px;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  gap: 10px;
 }
 
 .moodboard-post.text-only p,
+.moodboard-post.text-break p,
 .moodboard-post.wide-text p {
+  font-size: 14px;
   margin: 0;
   color: rgba(0, 0, 0, 0.85);
-  text-align: center;
-}
-
-.moodboard-post.text-break h3 {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 15px;
-  color: #000000;
-  display: none;
-}
-
-.moodboard-post.text-break p {
-  font-size: 14px;
-  line-height: 1.6;
-  color: #000000;
-  margin: 0;
-}
-
-.moodboard-post.text-break:hover,
-.moodboard-post.text-only:hover {
-  transform: scale(1.05) !important;
-  z-index: 10;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease;
 }
 
 .moodboard-post .caption {
