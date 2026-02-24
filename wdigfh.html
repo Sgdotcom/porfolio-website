@@ -13,10 +13,25 @@
     content="Simon Grey's Where Do I Go From Here - Creative inspiration, design thoughts, and behind-the-scenes process from a Stockholm-based visual communications student.">
   <meta name="keywords"
     content="Simon Grey, Where Do I Go From Here, creative inspiration, design process, Stockholm, visual communications, blog, creative thoughts">
+  <meta name="github-owner" content="Sgdotcom">
+  <meta name="github-repo" content="porfolio-website">
+  <meta name="github-branch" content="main">
   <script src="JS/main.js" defer></script>
+  <script type="module" src="JS/wdigfh.js" defer></script>
 </head>
 
 <body>
+
+  <div id="edit-login-overlay" class="edit-login-overlay hidden" role="dialog" aria-modal="true">
+    <div class="edit-login-card">
+      <h2>Secure CMS Access</h2>
+      <p>Enter your admin token to unlock edit mode. Visit <code>?edit=1</code> and check the console for the daily password.</p>
+      <form>
+        <input type="password" name="cms-password" placeholder="Admin token" autocomplete="off" required>
+        <button type="submit">Unlock edit mode</button>
+      </form>
+    </div>
+  </div>
 
   <header class="top-bar">
     <div class="left">
@@ -37,6 +52,27 @@
     <div class="moodboard-header">
       <h1>WHERE DO I GO FROM HERE?</h1>
       <p>This is The Dump. My creative inspiration, design thoughts, and behind-the-scenes process.</p>
+    </div>
+
+    <div id="moodboard-controls" class="moodboard-controls hidden" aria-label="Moodboard editor controls">
+      <button type="button" data-action="add-image" class="control-button">Add Image</button>
+      <input type="file" name="add-image" accept="image/jpeg,image/png,image/webp,image/avif" multiple class="hidden" />
+      <button type="button" data-action="add-text" class="control-button">Add Text</button>
+      <button type="button" data-action="delete-item" class="control-button" disabled>Delete Item</button>
+      <button type="button" data-action="publish" class="control-button">Publish</button>
+      <div class="control-picker">
+        <label for="bg-color-picker">BG</label>
+        <input id="bg-color-picker" name="bg-color" type="color" value="#ffffff">
+      </div>
+      <div class="control-picker">
+        <label for="text-color-picker">Text</label>
+        <input id="text-color-picker" name="text-color" type="color" value="#000000">
+      </div>
+      <div class="control-picker">
+        <label for="font-size-slider">Font</label>
+        <input id="font-size-slider" name="font-size" type="range" min="12" max="32" value="16">
+      </div>
+      <span class="control-status" data-status>View mode</span>
     </div>
 
     <div class="moodboard-grid" id="moodboard-grid">
