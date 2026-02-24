@@ -1313,7 +1313,6 @@ video.loaded {
     padding-right: var(--site-margin);
   }
 
-  .project-popout,
   .lightbox-prev,
   .lightbox-next {
     display: none !important;
