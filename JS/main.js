@@ -397,12 +397,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const controls = document.createElement('div');
     controls.className = 'photo-edit-controls';
 
-    const exportButton = document.createElement('button');
-    exportButton.type = 'button';
-    exportButton.className = 'reorder-export-btn';
-    exportButton.textContent = 'EXPORT FREEFORM HTML';
+    const getGithubEditUrlForCurrentPage = () => {
+      const path = (window.location.pathname || '/').replace(/^\//, '');
+      const filePath = path || 'index.html';
+      return `https://github.com/Sgdotcom/porfolio-website/edit/main/${filePath}`;
+    };
 
-    exportButton.addEventListener('click', async () => {
+    const buildExportText = () => {
       const htmlSnippet = dom.queryAll('.photo-free-item', stack)
         .map((wrapper) => {
           const mediaElement = dom.query('img, video', wrapper);
@@ -419,7 +420,23 @@ document.addEventListener('DOMContentLoaded', () => {
         .filter(Boolean)
         .join('\n');
 
-      const exportText = ['# HTML snippet (replace photo-stack content)', htmlSnippet].join('\n');
+      const sortKey = stack.getAttribute('data-sort-key') || '';
+      const filePath = (window.location.pathname || '/').replace(/^\//, '') || 'index.html';
+
+      return [
+        `# Paste into ${filePath}`,
+        sortKey ? `# Replace the <div class="photo-stack" data-sort-key="${sortKey}"> contents` : '# Replace the target photo-stack contents',
+        htmlSnippet
+      ].join('\n');
+    };
+
+    const exportButton = document.createElement('button');
+    exportButton.type = 'button';
+    exportButton.className = 'reorder-export-btn';
+    exportButton.textContent = 'EXPORT FREEFORM HTML';
+
+    exportButton.addEventListener('click', async () => {
+      const exportText = buildExportText();
 
       try {
         await navigator.clipboard.writeText(exportText);
@@ -432,6 +449,24 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
+    const publishButton = document.createElement('button');
+    publishButton.type = 'button';
+    publishButton.className = 'reorder-export-btn';
+    publishButton.textContent = 'PUBLISH (GITHUB)';
+    publishButton.addEventListener('click', async () => {
+      const exportText = buildExportText();
+      const githubUrl = getGithubEditUrlForCurrentPage();
+
+      try {
+        await navigator.clipboard.writeText(exportText);
+      } catch (_) {
+        // Ignore clipboard failures; user can still copy from prompt.
+      }
+
+      window.open(githubUrl, '_blank', 'noopener');
+      window.prompt('Paste this into GitHub editor and commit:', exportText);
+    });
+
     const resetButton = document.createElement('button');
     resetButton.type = 'button';
     resetButton.className = 'reorder-export-btn';
@@ -442,6 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     controls.appendChild(exportButton);
+    controls.appendChild(publishButton);
     controls.appendChild(resetButton);
     stack.parentElement.insertBefore(controls, stack);
   }
