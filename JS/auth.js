@@ -4,6 +4,8 @@ class MoodboardAuth {
     this.isAdmin = false;
     this.authKey = 'moodboard-admin-auth';
     this.sessionKey = 'moodboard-admin-session';
+    const urlParams = new URLSearchParams(window.location.search);
+    this.isEditMode = urlParams.get('edit') === '1';
     this.adminPassword = this.generateAdminPassword();
     this.init();
   }
@@ -38,7 +40,11 @@ class MoodboardAuth {
     }
     
     this.isAdmin = false;
-    this.showLoginUI();
+    if (this.isEditMode) {
+      this.showLoginUI();
+    } else {
+      this.hideAuthModal();
+    }
   }
 
   setupAuthUI() {
@@ -209,6 +215,11 @@ class MoodboardAuth {
 
   showLoginUI() {
     const modal = document.getElementById('auth-modal');
+    if (!this.isEditMode) {
+      this.hideAuthModal();
+      return;
+    }
+
     if (modal) modal.style.display = 'flex';
     
     // Hide edit mode UI
@@ -298,7 +309,7 @@ class MoodboardAuth {
 
   requireAuth() {
     const urlParams = new URLSearchParams(window.location.search);
-    const isEditMode = urlParams.has('edit');
+    const isEditMode = urlParams.get('edit') === '1';
     
     if (isEditMode && !this.isAdmin) {
       this.showLoginUI();
