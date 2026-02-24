@@ -34,13 +34,21 @@
     },
     unitAspectRatio: 4 / 3,
     maxRetries: 3,
-    retryDelayMs: 1000
+    retryDelayMs: 1000,
+    uploadUrl: 'api/upload.php', // PHP endpoint for uploads
+    supportedFormats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'],
+    maxFileSize: 10 * 1024 * 1024, // 10MB
+    autoSaveDelayMs: 2000 // Auto-save after 2 seconds of inactivity
   };
 
   const state = {
     editMode: false,
     interactInitialized: false,
-    moodboardGalleryReady: Promise.resolve()
+    moodboardGalleryReady: Promise.resolve(),
+    isUploading: false,
+    uploadQueue: [],
+    autoSaveTimer: null,
+    hasUnsavedChanges: false
   };
 
   const dom = {
@@ -135,12 +143,19 @@
   }
 
   function applyLayout() {
-    if (!dom.grid) return;
+    console.log('applyLayout called');
+    if (!dom.grid) {
+      console.log('No grid element found for layout');
+      return;
+    }
 
     dom.grid.classList.add('edit-freeform');
 
     const posts = Array.from(dom.grid.querySelectorAll(SELECTORS.moodboardPost));
+    console.log('Found posts for layout:', posts.length);
+
     const { columns, unitWidth, unitHeight, startY } = getGridMetrics(dom.grid);
+    console.log('Grid metrics:', { columns, unitWidth, unitHeight, startY });
 
     const occupancyGrid = [];
 
@@ -163,9 +178,11 @@
       }
     }
 
-    posts.forEach((postElement) => {
+    posts.forEach((postElement, index) => {
       const widthUnits = Math.min(columns, Number(postElement.getAttribute('data-w-units')) || 1);
       const heightUnits = Number(postElement.getAttribute('data-h-units')) || 1;
+
+      console.log(`Laying out post ${index}:`, { widthUnits, heightUnits });
 
       let row = 0;
       let col = 0;
@@ -175,6 +192,8 @@
         if (isAreaClear(row, col, widthUnits, heightUnits)) {
           const x = col * unitWidth;
           const y = startY + (row * unitHeight);
+
+          console.log(`Positioning post ${index} at:`, { x, y, row, col });
 
           if (!postElement.classList.contains('dragging')) {
             postElement.style.transform = `translate(${x}px, ${y}px)`;
@@ -198,6 +217,7 @@
     });
 
     updateGridHeight();
+    console.log('Layout applied successfully');
   }
 
   function saveLayout() {
@@ -217,6 +237,63 @@
     if (headerDescription) {
       saveStoredHeaderText(headerDescription.textContent || '');
     }
+
+    // Mark as saved
+    state.hasUnsavedChanges = false;
+    updateSaveIndicator();
+  }
+
+  function triggerAutoSave() {
+    state.hasUnsavedChanges = true;
+    updateSaveIndicator();
+    
+    // Clear existing timer
+    if (state.autoSaveTimer) {
+      clearTimeout(state.autoSaveTimer);
+    }
+    
+    // Set new timer
+    state.autoSaveTimer = setTimeout(() => {
+      if (state.hasUnsavedChanges) {
+        saveLayout();
+        console.log('Auto-saved layout');
+      }
+    }, CONFIG.autoSaveDelayMs);
+  }
+
+  function updateSaveIndicator() {
+    const editIndicator = document.getElementById('edit-indicator');
+    if (editIndicator) {
+      if (state.hasUnsavedChanges) {
+        editIndicator.textContent = '📝 EDIT MODE *';
+        editIndicator.style.background = '#ffc107';
+        editIndicator.style.color = '#000';
+      } else {
+        editIndicator.textContent = '📝 EDIT MODE';
+        editIndicator.style.background = '#28a745';
+        editIndicator.style.color = '#fff';
+      }
+    }
+  }
+
+  function exitEditMode() {
+    // Save any pending changes
+    if (state.hasUnsavedChanges) {
+      saveLayout();
+    }
+    
+    // Clear auto-save timer
+    if (state.autoSaveTimer) {
+      clearTimeout(state.autoSaveTimer);
+    }
+    
+    // Exit edit mode
+    setEditMode(false);
+    
+    // Update URL to remove edit parameter
+    const url = new URL(window.location);
+    url.searchParams.delete('edit');
+    window.history.replaceState({}, '', url);
   }
 
   function updateEditableTextBlocks(isEditable) {
@@ -232,6 +309,453 @@
     dom.grid.querySelectorAll(`${SELECTORS.textBody}, ${SELECTORS.caption}`).forEach((element) => {
       element.contentEditable = isEditable;
     });
+  }
+
+  function validateFile(file) {
+    const extension = file.name.split('.').pop().toLowerCase();
+    const isValidFormat = CONFIG.supportedFormats.includes(extension);
+    const isValidSize = file.size <= CONFIG.maxFileSize;
+    
+    if (!isValidFormat) {
+      throw new Error(`Unsupported format. Please use: ${CONFIG.supportedFormats.join(', ')}`);
+    }
+    if (!isValidSize) {
+      throw new Error(`File too large. Maximum size is ${CONFIG.maxFileSize / 1024 / 1024}MB`);
+    }
+    
+    return true;
+  }
+
+  function generateUniqueFilename(originalName) {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).slice(2, 8);
+    const extension = originalName.split('.').pop();
+    return `${timestamp}_${random}.${extension}`;
+  }
+
+  async function uploadImage(file) {
+    if (!validateFile(file)) return null;
+    
+    // Check if we should use GitHub Pages uploader
+    if (window.GitHubPagesUploader && 
+        (window.location.hostname.includes('github.io') || 
+         window.location.hostname.includes('pages.dev') ||
+         window.location.hostname.includes('simongrey.blue'))) {
+      
+      console.log('Using GitHub Pages uploader for:', file.name);
+      const uploader = new window.GitHubPagesUploader();
+      return await uploader.uploadImage(file);
+    }
+    
+    // For local testing without PHP server, simulate upload
+    if (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      console.log('Local testing detected - simulating upload for:', file.name);
+      
+      // Simulate upload delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const filename = generateUniqueFilename(file.name);
+      const objectUrl = URL.createObjectURL(file);
+      
+      return {
+        path: objectUrl, // Use object URL for local testing
+        originalName: file.name,
+        size: file.size,
+        type: file.type,
+        isLocal: true
+      };
+    }
+    
+    const formData = new FormData();
+    const filename = generateUniqueFilename(file.name);
+    formData.append('image', file, filename);
+    formData.append('targetPath', 'assets/pictures-of/');
+    
+    try {
+      console.log('Uploading file:', file.name, 'Size:', file.size, 'Type:', file.type);
+      
+      const response = await fetch(CONFIG.uploadUrl, {
+        method: 'POST',
+        body: formData
+      });
+      
+      console.log('Upload response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Upload failed response:', errorText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      console.log('Upload result:', result);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Upload failed');
+      }
+      
+      return {
+        path: `assets/pictures-of/${filename}`,
+        originalName: file.name,
+        size: file.size,
+        type: file.type
+      };
+      
+    } catch (error) {
+      console.error('Upload error details:', error);
+      throw error;
+    }
+  }
+
+  function createUploadZone() {
+    const zone = document.createElement('div');
+    zone.className = 'upload-zone';
+    zone.innerHTML = `
+      <div class="upload-content">
+        <div class="upload-icon">📸</div>
+        <h3>Drop images here</h3>
+        <p>or click to browse</p>
+        <input type="file" id="file-input" multiple accept="image/*" style="display: none;">
+        <button class="upload-button">Choose Images</button>
+      </div>
+      <div class="upload-progress" style="display: none;">
+        <div class="progress-bar">
+          <div class="progress-fill"></div>
+        </div>
+        <p class="progress-text">Uploading...</p>
+      </div>
+    `;
+    
+    return zone;
+  }
+
+  function showUploadZone() {
+    console.log('showUploadZone called, editMode:', state.editMode, 'dom.grid:', !!dom.grid);
+    
+    if (!dom.grid || !state.editMode) {
+      console.log('showUploadZone early return - missing grid or not in edit mode');
+      return;
+    }
+    
+    const existingZone = dom.grid.querySelector('.upload-zone');
+    if (existingZone) {
+      console.log('Upload zone already exists');
+      return;
+    }
+    
+    console.log('Creating new upload zone');
+    const uploadZone = createUploadZone();
+    dom.grid.appendChild(uploadZone);
+    
+    const fileInput = uploadZone.querySelector('#file-input');
+    const uploadButton = uploadZone.querySelector('.upload-button');
+    
+    console.log('Setting up upload event listeners');
+    
+    uploadButton.addEventListener('click', () => {
+      console.log('Upload button clicked');
+      fileInput.click();
+    });
+    
+    fileInput.addEventListener('change', (event) => {
+      console.log('File input changed:', event.target.files);
+      handleFileSelect(event);
+    });
+    
+    // Drag and drop events
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('drag-over');
+    });
+    
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('drag-over');
+    });
+    
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag-over');
+      console.log('Files dropped:', e.dataTransfer.files);
+      handleFiles(e.dataTransfer.files);
+    });
+    
+    console.log('Upload zone setup complete');
+  }
+
+  async function handleFileSelect(event) {
+    handleFiles(event.target.files);
+  }
+
+  async function handleFiles(files) {
+    console.log('handleFiles called with:', files.length, 'files');
+    
+    const validFiles = Array.from(files).filter(file => {
+      try {
+        validateFile(file);
+        console.log('Valid file:', file.name, file.type, file.size);
+        return true;
+      } catch (error) {
+        console.error(`Invalid file ${file.name}:`, error.message);
+        return false;
+      }
+    });
+    
+    console.log('Valid files count:', validFiles.length);
+    
+    if (validFiles.length === 0) {
+      console.log('No valid files to upload');
+      return;
+    }
+    
+    state.isUploading = true;
+    showUploadProgress(validFiles.length);
+    
+    try {
+      console.log('Starting upload process...');
+      const uploadPromises = validFiles.map(file => uploadImage(file));
+      const results = await Promise.all(uploadPromises);
+      
+      console.log('Upload results:', results);
+      
+      // Add uploaded images to gallery
+      await addImagesToGallery(results.filter(Boolean));
+      
+      // Hide upload zone
+      const uploadZone = dom.grid.querySelector('.upload-zone');
+      if (uploadZone) uploadZone.remove();
+      
+    } catch (error) {
+      console.error('Batch upload failed:', error);
+      showUploadError(error.message);
+    } finally {
+      state.isUploading = false;
+      hideUploadProgress();
+    }
+  }
+
+  function showUploadProgress(fileCount) {
+    const progress = document.querySelector('.upload-progress');
+    if (progress) {
+      progress.style.display = 'block';
+      progress.querySelector('.progress-text').textContent = `Uploading ${fileCount} file${fileCount > 1 ? 's' : ''}...`;
+    }
+  }
+
+  function hideUploadProgress() {
+    const progress = document.querySelector('.upload-progress');
+    if (progress) progress.style.display = 'none';
+  }
+
+  function showUploadError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'upload-error';
+    errorDiv.innerHTML = `
+      <p>❌ Upload failed: ${message}</p>
+      <button onclick="this.parentElement.remove()">Dismiss</button>
+    `;
+    dom.grid.appendChild(errorDiv);
+    
+    setTimeout(() => errorDiv.remove(), 5000);
+  }
+
+  async function addImagesToGallery(uploadedImages) {
+    console.log('addImagesToGallery called with:', uploadedImages.length, 'images');
+    
+    if (!uploadedImages.length) {
+      console.log('No images to add');
+      return;
+    }
+    
+    // For GitHub Pages, add to public gallery so visitors can see them
+    if (window.location.hostname.includes('github.io') || 
+        window.location.hostname.includes('pages.dev') ||
+        window.location.hostname.includes('simongrey.blue')) {
+      
+      console.log('GitHub Pages detected - adding to public gallery');
+      
+      uploadedImages.forEach((image, index) => {
+        console.log(`Processing image ${index + 1}:`, image);
+        
+        const post = createMediaPost({
+          path: image.path,
+          type: 'image',
+          caption: image.originalName.replace(/\.[^/.]+$/, ''),
+          isLocal: image.isLocal,
+          isBase64: image.isBase64
+        });
+        
+        console.log('Created media post:', post);
+        
+        if (post && dom.grid) {
+          console.log('Adding post to grid...');
+          
+          // Insert at the beginning before text placeholders
+          const firstPlaceholder = dom.grid.querySelector('.moodboard-post.text-placeholder');
+          if (firstPlaceholder) {
+            console.log('Inserting before first text placeholder');
+            dom.grid.insertBefore(post, firstPlaceholder);
+          } else {
+            console.log('Appending to end of grid');
+            dom.grid.appendChild(post);
+          }
+          
+          // Set initial position at the top of grid
+          const gridWidth = dom.grid.clientWidth || 1000;
+          const columns = 10; // Fixed column count
+          const unitWidth = gridWidth / columns;
+          const unitHeight = 165; // Fixed height
+          
+          // Find first available position by checking existing posts
+          const existingPosts = Array.from(dom.grid.querySelectorAll('.moodboard-post:not(.text-placeholder)'));
+          const occupiedPositions = new Set();
+          
+          existingPosts.forEach(existingPost => {
+            const x = parseFloat(existingPost.getAttribute('data-x')) || 0;
+            const y = parseFloat(existingPost.getAttribute('data-y')) || 0;
+            const col = Math.round(x / unitWidth);
+            const row = Math.round(y / unitHeight);
+            occupiedPositions.add(`${row},${col}`);
+          });
+          
+          // Find first unoccupied position
+          let targetRow = 0;
+          let targetCol = 0;
+          let found = false;
+          
+          for (let row = 0; row < 20 && !found; row++) {
+            for (let col = 0; col < columns && !found; col++) {
+              if (!occupiedPositions.has(`${row},${col}`)) {
+                targetRow = row;
+                targetCol = col;
+                found = true;
+              }
+            }
+          }
+          
+          const x = targetCol * unitWidth;
+          const y = 10 + (targetRow * unitHeight); // 10px start offset
+          
+          console.log('Positioning image at:', { x, y, row: targetRow, col: targetCol });
+          
+          // Apply position and size
+          post.style.transform = `translate(${x}px, ${y}px)`;
+          post.style.width = `${unitWidth}px`;
+          post.style.height = `${unitHeight}px`;
+          post.style.position = 'absolute';
+          post.style.display = 'block';
+          post.style.visibility = 'visible';
+          post.style.opacity = '1';
+          post.style.zIndex = '1';
+          
+          // Set attributes for layout system
+          post.setAttribute('data-x', String(x));
+          post.setAttribute('data-y', String(y));
+          post.setAttribute('data-w-units', '1');
+          post.setAttribute('data-h-units', '1');
+          
+          // Trigger lazy loading for the new image
+          if (typeof window.activateLazyLoad === 'function') {
+            window.activateLazyLoad(post);
+          }
+          
+          console.log('Image added successfully at visible position:', { x, y });
+        } else {
+          console.error('Failed to create post or find grid');
+        }
+      });
+      
+      // Add to public gallery so visitors can see them
+      if (window.PublicGalleryManager) {
+        const publicManager = new window.PublicGalleryManager();
+        uploadedImages.forEach(image => {
+          publicManager.addAdminChange({
+            ...image,
+            id: image.path || image.id
+          });
+        });
+        
+        console.log('Added', uploadedImages.length, 'images to public gallery');
+      }
+      
+      return;
+    }
+    
+    // For local testing, just add images directly without updating gallery.json
+    if (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      console.log('Local testing - adding images directly to gallery');
+      
+      uploadedImages.forEach((image, index) => {
+        console.log(`Processing image ${index + 1}:`, image);
+        
+        const post = createMediaPost({
+          path: image.path,
+          type: 'image',
+          caption: image.originalName.replace(/\.[^/.]+$/, ''),
+          isLocal: image.isLocal
+        });
+        
+        console.log('Created media post:', post);
+        
+        if (post && dom.grid) {
+          console.log('Adding post to grid...');
+          
+          // Find the right place to insert (before text placeholders)
+          const anchor = dom.grid.querySelector('.moodboard-post.text-placeholder');
+          if (anchor) {
+            console.log('Inserting before first text placeholder');
+            dom.grid.insertBefore(post, anchor);
+          } else {
+            console.log('Appending to end of grid');
+            dom.grid.appendChild(post);
+          }
+          
+          // Apply layout to make it visible
+          console.log('Applying layout...');
+          applyLayout();
+          
+          // Trigger lazy loading for the new image
+          if (typeof window.activateLazyLoad === 'function') {
+            window.activateLazyLoad(post);
+          }
+          
+          console.log('Image added successfully');
+        } else {
+          console.error('Failed to create post or find grid');
+        }
+      });
+      
+      return;
+    }
+    
+    try {
+      // Get current gallery data
+      const response = await fetch(CONFIG.manifestUrl, { cache: 'no-store' });
+      const gallery = await response.json();
+      
+      // Add new images
+      uploadedImages.forEach(image => {
+        gallery.items.push({
+          path: image.path,
+          type: 'image',
+          caption: image.originalName.replace(/\.[^/.]+$/, '') // Remove extension
+        });
+      });
+      
+      // Update gallery.json (this would need a server endpoint)
+      await updateGalleryJson(gallery);
+      
+      // Reload gallery
+      await loadMoodboardGallery();
+      
+    } catch (error) {
+      console.error('Failed to add images to gallery:', error);
+    }
+  }
+
+  async function updateGalleryJson(galleryData) {
+    // This would need a server endpoint to update the JSON file
+    // For now, we'll just reload the existing gallery
+    console.log('Gallery data updated:', galleryData);
   }
 
   function createTextBox(initialText = 'Type something...', customId = null) {
@@ -261,11 +785,23 @@
   }
 
   function setEditMode(active) {
+    console.log('setEditMode called with:', active);
     state.editMode = Boolean(active);
-    if (!dom.grid) return;
+    if (!dom.grid) {
+      console.log('No grid element found');
+      return;
+    }
 
+    console.log('Setting edit mode to:', state.editMode);
     dom.grid.classList.add('edit-freeform');
     dom.grid.classList.toggle('edit-mode', state.editMode);
+
+    // Show/hide edit indicator
+    const editIndicator = document.getElementById('edit-indicator');
+    if (editIndicator) {
+      editIndicator.style.display = state.editMode ? 'block' : 'none';
+      console.log('Edit indicator updated');
+    }
 
     if (dom.editControlsFooter) {
       dom.editControlsFooter.style.display = state.editMode ? 'inline-block' : 'none';
@@ -280,7 +816,7 @@
     if (headerDescription) {
       headerDescription.contentEditable = state.editMode;
       if (!headerDescription.dataset.autosaveBound) {
-        headerDescription.addEventListener('input', saveLayout);
+        headerDescription.addEventListener('input', triggerAutoSave);
         headerDescription.dataset.autosaveBound = 'true';
       }
 
@@ -289,10 +825,19 @@
     }
 
     if (state.editMode) {
+      console.log('Entering edit mode - showing upload zone');
+      showUploadZone();
       initInteract();
-    } else if (typeof interact !== 'undefined') {
-      interact(SELECTORS.moodboardPost).unset();
-      state.interactInitialized = false;
+    } else {
+      console.log('Exiting edit mode - hiding upload zone');
+      // Hide upload zone when exiting edit mode
+      const uploadZone = dom.grid.querySelector('.upload-zone');
+      if (uploadZone) uploadZone.remove();
+      
+      if (typeof interact !== 'undefined') {
+        interact(SELECTORS.moodboardPost).unset();
+        state.interactInitialized = false;
+      }
     }
   }
 
@@ -354,7 +899,7 @@
             target.classList.remove('dragging');
             target.style.zIndex = '';
             applyLayout();
-            saveLayout();
+            triggerAutoSave();
           }
         }
       })
@@ -382,25 +927,47 @@
           },
           end(event) {
             event.target.classList.remove('resizing');
-            saveLayout();
+            triggerAutoSave();
           }
         }
       });
   }
 
   function createMediaPost(item) {
+    console.log('createMediaPost called with:', item);
+    
     const post = document.createElement('div');
     post.className = 'moodboard-post photo-only auto-generated lazy';
 
     const path = typeof item.path === 'string' ? item.path.trim() : '';
-    if (!path) return null;
+    if (!path) {
+      console.error('No path provided for media post');
+      return null;
+    }
 
     post.setAttribute('data-id', path);
+    console.log('Created post element with ID:', path);
 
     const isVideo = item.type === 'video';
     const media = document.createElement(isVideo ? 'video' : 'img');
-    media.dataset.src = path;
-    media.classList.add('lazy');
+    
+    // Handle different image sources
+    if (item.isBase64 && path.startsWith('data:')) {
+      // GitHub Pages base64 image
+      media.src = path;
+      media.classList.add('loaded');
+      console.log('Set base64 image for GitHub Pages');
+    } else if (item.isLocal && path.startsWith('blob:')) {
+      // Local testing with object URL
+      media.src = path;
+      media.classList.add('loaded');
+      console.log('Set local blob URL for image:', path);
+    } else {
+      // Regular lazy loading for server images
+      media.dataset.src = path;
+      media.classList.add('lazy');
+      console.log('Set lazy loading for image:', path);
+    }
 
     if (isVideo) {
       media.autoplay = true;
@@ -411,14 +978,17 @@
     }
 
     post.appendChild(media);
+    console.log('Added media element to post');
 
     if (item.caption) {
       const caption = document.createElement('div');
       caption.className = 'caption';
       caption.textContent = item.caption;
       post.appendChild(caption);
+      console.log('Added caption:', item.caption);
     }
 
+    console.log('Media post created successfully:', post);
     return post;
   }
 
@@ -487,24 +1057,41 @@
     dom.grid.appendChild(fragment);
   }
 
-  async function loadMoodboardGallery(retryCount = 0) {
+  async function loadMoodboardGallery() {
     if (!dom.grid) return;
 
     try {
-      const response = await fetch(CONFIG.manifestUrl, { 
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      });
+      let items = [];
       
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      // Check if we should use public gallery (GitHub Pages)
+      if (window.PublicGalleryManager) {
+        const publicManager = new window.PublicGalleryManager();
+        const publicGallery = publicManager.getCombinedGallery();
+        
+        if (publicGallery) {
+          items = publicGallery;
+          console.log('Using public gallery with', items.length, 'items');
+        }
       }
+      
+      // If no public gallery, try server gallery
+      if (items.length === 0) {
+        const response = await fetch(CONFIG.manifestUrl, { 
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
 
-      const payload = await response.json();
-      const items = Array.isArray(payload && payload.items) ? payload.items : [];
+        const payload = await response.json();
+        items = Array.isArray(payload && payload.items) ? payload.items : [];
+        console.log('Using server gallery with', items.length, 'items');
+      }
       
       if (!items.length) {
         console.warn('No items found in gallery manifest');
@@ -533,22 +1120,15 @@
       console.log(`Successfully loaded ${items.length} gallery items`);
       
     } catch (error) {
-      console.error(`Failed to load moodboard gallery manifest (attempt ${retryCount + 1}):`, error);
+      console.error('Failed to load moodboard gallery manifest:', error);
       
-      // Retry logic
-      if (retryCount < CONFIG.maxRetries) {
-        console.log(`Retrying in ${CONFIG.retryDelayMs}ms...`);
-        setTimeout(() => loadMoodboardGallery(retryCount + 1), CONFIG.retryDelayMs);
-        return;
-      }
-      
-      // Show user-friendly error message after all retries failed
+      // Show user-friendly error message
       if (dom.grid) {
         const errorMsg = document.createElement('div');
         errorMsg.style.cssText = 'grid-column: 1/-1; padding: 40px; text-align: center; color: var(--accent); background: rgba(0,0,0,0.05); border-radius: 8px; margin: 20px;';
         errorMsg.innerHTML = `
           <h3>Gallery Loading Issue</h3>
-          <p>Unable to load the gallery images after multiple attempts. This might be a temporary issue.</p>
+          <p>Unable to load the gallery images. This might be a temporary issue.</p>
           <p style="font-size: 0.9em; opacity: 0.8;">Error: ${error.message}</p>
           <button onclick="location.reload()" style="margin-top: 10px; padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer;">Retry</button>
         `;
@@ -682,6 +1262,14 @@
       });
     }
 
+    // Add publish button functionality
+    const publishButton = document.getElementById('publish-changes');
+    if (publishButton) {
+      publishButton.addEventListener('click', () => {
+        handlePublishChanges();
+      });
+    }
+
     if (dom.grid) {
       dom.grid.addEventListener('input', (event) => {
         const target = event.target;
@@ -690,7 +1278,7 @@
         if (target.classList.contains('text-only-content') ||
           target.classList.contains('placeholder-body') ||
           target.classList.contains('caption')) {
-          saveLayout();
+          triggerAutoSave();
         }
       });
     }
@@ -698,21 +1286,104 @@
     window.addEventListener('resize', debounce(() => {
       applyLayout();
     }, CONFIG.resizeDebounceMs));
+
+    // Add keyboard shortcut for exiting edit mode (Escape key)
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && state.editMode) {
+        exitEditMode();
+      }
+    });
+
+    // Add beforeunload event to warn about unsaved changes
+    window.addEventListener('beforeunload', (event) => {
+      if (state.editMode && state.hasUnsavedChanges) {
+        event.preventDefault();
+        event.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return event.returnValue;
+      }
+    });
+  }
+
+  function handlePublishChanges() {
+    if (!window.PublicGalleryManager) {
+      console.log('Public gallery manager not available');
+      return;
+    }
+
+    const publicManager = new window.PublicGalleryManager();
+    const wasPublished = publicManager.publishChanges();
+    
+    if (wasPublished) {
+      // Show success message
+      showNotification('🌐 Changes published! Visitors can now see your updates.', 'success');
+      
+      // Update the gallery to show published changes
+      setTimeout(() => {
+        loadMoodboardGallery();
+      }, 1000);
+      
+      console.log('Changes published successfully');
+    } else {
+      // Show info message
+      showNotification('ℹ️ No changes to publish', 'info');
+      console.log('No changes to publish');
+    }
+  }
+
+  function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 16px 20px;
+      background: ${type === 'success' ? '#28a745' : type === 'info' ? '#17a2b8' : '#dc3545'};
+      color: white;
+      border-radius: 8px;
+      font-weight: 600;
+      z-index: 10001;
+      animation: slideIn 0.3s ease;
+      max-width: 300px;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.style.animation = 'slideOut 0.3s ease';
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
   }
 
   function init() {
+    console.log('Moodboard app initializing...');
+    
+    // Check authentication before proceeding
+    if (window.moodboardAuth && !window.moodboardAuth.requireAuth()) {
+      console.log('Authentication required - waiting for login');
+      return;
+    }
+    
     state.moodboardGalleryReady = loadMoodboardGallery().catch((error) => {
       console.warn('Moodboard gallery initialization failed', error);
     });
 
     state.moodboardGalleryReady.finally(() => {
+      console.log('Gallery loaded, setting up edit mode...');
       hydrateMoodboardPosts();
       const params = new URLSearchParams(window.location.search);
       const isEditing = params.has('edit');
-      setEditMode(isEditing);
+      console.log('Edit mode parameter found:', isEditing);
+      
+      // Only set edit mode if authenticated
+      if (!window.moodboardAuth || window.moodboardAuth.isAdmin) {
+        setEditMode(isEditing);
+      } else {
+        console.log('Not authenticated - edit mode disabled');
+      }
     });
 
     bindStaticEvents();
+    console.log('Moodboard app initialization complete');
   }
 
   document.addEventListener('DOMContentLoaded', init);

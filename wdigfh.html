@@ -7,6 +7,7 @@
   <link rel="icon" type="image/x-icon" href="assets/home/Artboard 1.png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="css/wdigfh-standalone.css">
+  <link rel="stylesheet" href="css/upload-styles.css">
   <link rel="preload" href="assets/Timeline 1.webm" as="video">
   <link rel="preload" href="assets/home/Artboard 1.png" as="image">
   <meta http-equiv="Cache-Control" content="max-age=31536000, public">
@@ -17,6 +18,9 @@
     content="Simon Grey, Where Do I Go From Here, creative inspiration, design process, Stockholm, visual communications, blog, creative thoughts">
   <script src="JS/main.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+  <script src="JS/auth.js" defer></script>
+  <script src="JS/github-uploader.js" defer></script>
+  <script src="JS/public-gallery.js" defer></script>
 
   <!-- Web App & SEO Files -->
   <link rel="manifest" href="manifest.json">
@@ -61,6 +65,9 @@
       <a href="index.html" style="color: inherit; text-decoration: none;">← BACK TO PORTFOLIO</a>
     </div>
     <div class="right">
+      <div id="edit-indicator" style="display: none; margin-right: 16px; padding: 4px 12px; background: #28a745; color: white; border-radius: 12px; font-size: 12px; font-weight: 600;">
+        📝 EDIT MODE
+      </div>
       <button id="dark-toggle" aria-label="Toggle dark mode">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
           stroke-linecap="round" stroke-linejoin="round">
@@ -106,7 +113,8 @@
       <span class="edit-controls-footer" style="display: none;">
         <button id="add-text-box" type="button" class="save-btn">Add text box</button>
         <button id="export-moodboard" type="button" class="save-btn" style="margin-left:10px;">Export Changes</button>
-        <a href="wdigfh.html" class="exit-edit-link"
+        <button id="publish-changes" type="button" class="save-btn" style="margin-left:10px; background: #28a745;">🌐 Publish Changes</button>
+        <a href="javascript:void(0)" class="exit-edit-link" onclick="exitEditMode()"
           style="color:inherit; text-decoration:none; margin-left:10px; opacity:0.5;">Exit Edit Mode</a>
       </span>
     </p>
