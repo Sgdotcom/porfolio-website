@@ -189,7 +189,6 @@ export class GridEngine {
   }
 
 }
-}
 
 function getGridColumnsForWidth(viewportWidth = window.innerWidth, breakpoints = GRID_BREAKPOINTS) {
   if (viewportWidth <= breakpoints.mobile) return 2;
