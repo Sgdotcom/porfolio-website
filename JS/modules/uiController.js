@@ -63,9 +63,15 @@ export class UIController {
     const hasSelection = Boolean(this.selectedItem);
     this.deleteButton?.toggleAttribute('disabled', !hasSelection);
     if (!hasSelection) return;
-    this.bgPicker?.setAttribute('value', this.selectedItem.bgColor || '#ffffff');
-    this.textPicker?.setAttribute('value', this.selectedItem.textColor || '#000000');
-    this.fontSize?.value = this.selectedItem.fontSize || 16;
+    if (this.bgPicker) {
+      this.bgPicker.setAttribute('value', this.selectedItem.bgColor || '#ffffff');
+    }
+    if (this.textPicker) {
+      this.textPicker.setAttribute('value', this.selectedItem.textColor || '#000000');
+    }
+    if (this.fontSize) {
+      this.fontSize.value = this.selectedItem.fontSize || 16;
+    }
     this.bgPicker?.dispatchEvent(new Event('input'));
   }
 
