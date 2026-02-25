@@ -1,5 +1,12 @@
 import { StateManager } from './stateManager.js';
 
+const DEFAULT_COLUMNS = 10;
+const GRID_BREAKPOINTS = {
+  mobile: 576,
+  tablet: 992
+};
+const UNIT_ASPECT_RATIO = 4 / 3;
+
 function clamp(value, min, max) {
   if (value < min) return min;
   if (value > max) return max;
@@ -22,9 +29,11 @@ function intersects(a, b) {
 export class GridEngine {
   constructor(options = {}) {
     this.gridElement = options.gridElement || null;
-    this.columns = options.columns || 10;
+    this.columns = options.columns || DEFAULT_COLUMNS;
     this.stateManager = options.stateManager instanceof StateManager ? options.stateManager : null;
     this.editMode = Boolean(options.editMode);
+    this.breakpoints = options.breakpoints || GRID_BREAKPOINTS;
+    this.aspectRatio = options.aspectRatio || UNIT_ASPECT_RATIO;
     this.selectionCallback = () => {};
     this.selectedId = null;
 
@@ -178,4 +187,110 @@ export class GridEngine {
     const items = this.stateManager.getItems();
     return items.some((other) => other.id !== candidate.id && intersects(candidate, other));
   }
+
+}
+}
+
+function getGridColumnsForWidth(viewportWidth = window.innerWidth, breakpoints = GRID_BREAKPOINTS) {
+  if (viewportWidth <= breakpoints.mobile) return 2;
+  if (viewportWidth <= breakpoints.tablet) return 5;
+  return DEFAULT_COLUMNS;
+}
+
+function isAreaAvailable(occupancy, row, col, widthUnits, heightUnits, columns) {
+  for (let r = row; r < row + heightUnits; r += 1) {
+    for (let c = col; c < col + widthUnits; c += 1) {
+      if (c >= columns) return false;
+      if (occupancy[r] && occupancy[r][c]) return false;
+    }
+  }
+  return true;
+}
+
+function markArea(occupancy, row, col, widthUnits, heightUnits, columns) {
+  for (let r = row; r < row + heightUnits; r += 1) {
+    if (!occupancy[r]) occupancy[r] = new Array(columns).fill(false);
+    for (let c = col; c < col + widthUnits; c += 1) {
+      occupancy[r][c] = true;
+    }
+  }
+}
+
+function getPostDataId(postElement) {
+  const dataId = postElement.getAttribute('data-id');
+  if (dataId) return dataId;
+  const media = postElement.querySelector('img, video');
+  if (media) return media.getAttribute('data-src') || media.getAttribute('src') || '';
+  return (postElement.textContent || '').trim().substring(0, 30) || `item-${Date.now()}`;
+}
+
+function getPostType(postElement) {
+  if (postElement.classList.contains('text-placeholder')) return 'placeholder';
+  if (postElement.classList.contains('text-only') || postElement.classList.contains('text-break')) return 'text';
+  if (postElement.querySelector('video')) return 'video';
+  if (postElement.querySelector('img')) return 'image';
+  return 'media';
+}
+
+function getPostContent(postElement) {
+  const textBody = postElement.querySelector('.text-only-content');
+  if (textBody && textBody.textContent.trim()) return textBody.textContent.trim();
+  const placeholder = postElement.querySelector('.placeholder-body');
+  if (placeholder && placeholder.textContent.trim()) return placeholder.textContent.trim();
+  const caption = postElement.querySelector('.caption');
+  if (caption && caption.textContent.trim()) return caption.textContent.trim();
+  return '';
+}
+
+export function buildLayoutFromDom(gridElement, options = {}) {
+  if (!gridElement) return [];
+  const posts = Array.from(gridElement.querySelectorAll('.moodboard-post'));
+  if (!posts.length) return [];
+
+  const breakpoints = options.breakpoints || GRID_BREAKPOINTS;
+  const columns = getGridColumnsForWidth(window.innerWidth, breakpoints);
+  const occupancy = [];
+  const seedItems = [];
+
+  posts.forEach((postElement) => {
+    const widthUnits = clamp(Number(postElement.getAttribute('data-w-units')) || 1, 1, columns);
+    const heightUnits = Math.max(1, Number(postElement.getAttribute('data-h-units')) || 1);
+    let row = 0;
+    let col = 0;
+    let placed = false;
+
+    while (!placed) {
+      if (isAreaAvailable(occupancy, row, col, widthUnits, heightUnits, columns)) {
+        markArea(occupancy, row, col, widthUnits, heightUnits, columns);
+        placed = true;
+        const media = postElement.querySelector('img, video');
+        const src = media ? (media.getAttribute('data-src') || media.getAttribute('src') || '') : '';
+        const caption = postElement.querySelector('.caption')?.textContent?.trim() || '';
+
+        seedItems.push({
+          id: getPostDataId(postElement),
+          type: getPostType(postElement),
+          path: src,
+          src,
+          caption,
+          content: getPostContent(postElement),
+          x: col,
+          y: row,
+          w: widthUnits,
+          h: heightUnits,
+          bgColor: '#ffffff',
+          textColor: '#000000',
+          fontSize: 16
+        });
+      } else {
+        col += 1;
+        if (col >= columns) {
+          col = 0;
+          row += 1;
+        }
+      }
+    }
+  });
+
+  return seedItems;
 }
