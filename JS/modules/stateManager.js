@@ -2,13 +2,47 @@ const DEFAULT_COLUMNS = 10;
 const TEXT_DEFAULTS = {
   bgColor: '#ffffff',
   textColor: '#000000',
-  fontSize: 16
+  fontSize: 16,
+  textAlign: 'left'
 };
 
 function clamp(value, min, max) {
   if (value < min) return min;
   if (value > max) return max;
   return value;
+}
+
+function isAreaAvailable(occupancy, row, col, width, height, columns) {
+  for (let r = row; r < row + height; r += 1) {
+    if (!occupancy[r]) occupancy[r] = new Array(columns).fill(false);
+    for (let c = col; c < col + width; c += 1) {
+      if (c >= columns) return false;
+      if (occupancy[r][c]) return false;
+    }
+  }
+  return true;
+}
+
+function markArea(occupancy, row, col, width, height, columns) {
+  for (let r = row; r < row + height; r += 1) {
+    if (!occupancy[r]) occupancy[r] = new Array(columns).fill(false);
+    for (let c = col; c < col + width; c += 1) {
+      occupancy[r][c] = true;
+    }
+  }
+}
+
+function findAvailableSlot(occupancy, width, height, columns, startRow = 0) {
+  let row = Math.max(0, startRow);
+  while (row < 1000) {
+    for (let col = 0; col <= columns - width; col += 1) {
+      if (isAreaAvailable(occupancy, row, col, width, height, columns)) {
+        return { row, col };
+      }
+    }
+    row += 1;
+  }
+  return { row: 0, col: 0 };
 }
 
 export class StateManager {
@@ -29,18 +63,19 @@ export class StateManager {
   }
 
   normalizeItem(item, index) {
-    const width = item.w || (item.type === 'text' ? 2 : 3);
-    const height = item.h || (item.type === 'text' ? 1 : 2);
+    const width = typeof item.w === 'number' ? item.w : (item.type === 'text' ? 2 : 1);
+    const height = typeof item.h === 'number' ? item.h : (item.type === 'text' ? 1 : 1);
     const x = typeof item.x === 'number'
       ? item.x
-      : (index * 2) % DEFAULT_COLUMNS;
+      : index % DEFAULT_COLUMNS;
     const y = typeof item.y === 'number'
       ? item.y
-      : Math.floor(((index * 2) / DEFAULT_COLUMNS)) * 2;
+      : Math.floor(index / DEFAULT_COLUMNS);
 
+    const rawType = (item.type || 'image').toLowerCase();
     return {
       id: item.id || `item-${this.idCounter++}`,
-      type: item.type || 'image',
+      type: rawType === 'video' ? 'video' : (rawType === 'text' ? 'text' : 'image'),
       path: item.path || item.src || '',
       src: item.src || item.path || '',
       caption: item.caption || '',
@@ -52,12 +87,22 @@ export class StateManager {
       bgColor: item.bgColor || TEXT_DEFAULTS.bgColor,
       textColor: item.textColor || TEXT_DEFAULTS.textColor,
       fontSize: Number(item.fontSize) || TEXT_DEFAULTS.fontSize,
+      textAlign: item.textAlign || TEXT_DEFAULTS.textAlign,
       pendingFile: null
     };
   }
 
   loadState(data = { items: [] }) {
-    const items = (data.items || []).map((item, index) => this.normalizeItem(item, index));
+    const raw = data.items || [];
+    const path = (item) => (item.path || item.src || '').trim();
+    const type = (item) => (item.type || 'image').toLowerCase();
+    // Keep all videos; drop only image/media without path so we never render white image tiles
+    const filtered = raw.filter((item) => {
+      if (type(item) === 'video') return true;
+      if (type(item) === 'image') return path(item).length > 0;
+      return true;
+    });
+    const items = filtered.map((item, index) => this.normalizeItem(item, index));
     this.state.items = items;
     this.notify();
   }
@@ -89,13 +134,14 @@ export class StateManager {
       src: item.src || item.path || '',
       caption: item.caption || '',
       content: item.content || item.caption || '',
-      x: item.x,
-      y: item.y,
-      w: item.w,
-      h: item.h,
+      x: typeof item.x === 'number' ? item.x : index % DEFAULT_COLUMNS,
+      y: typeof item.y === 'number' ? item.y : Math.floor(index / DEFAULT_COLUMNS),
+      w: 1,
+      h: 1,
       bgColor: item.bgColor || TEXT_DEFAULTS.bgColor,
       textColor: item.textColor || TEXT_DEFAULTS.textColor,
       fontSize: item.fontSize || TEXT_DEFAULTS.fontSize,
+      textAlign: item.textAlign || TEXT_DEFAULTS.textAlign,
       pendingFile: item.pendingFile || null
     }));
     this.notify();
@@ -106,6 +152,49 @@ export class StateManager {
     this.state.items.push(normalized);
     this.notify();
     return normalized;
+  }
+
+  moveItem(id, coords = {}) {
+    const { x, y } = coords;
+    if (!Number.isFinite(x) && !Number.isFinite(y)) return false;
+
+    // Construct updates dynamically to prevent `undefined` from overwriting valid existing values
+    const updates = {};
+    if (Number.isFinite(x)) updates.x = Math.max(0, x);
+    if (Number.isFinite(y)) updates.y = Math.max(0, y);
+    if (Number.isFinite(coords.w)) updates.w = coords.w;
+    if (Number.isFinite(coords.h)) updates.h = coords.h;
+
+    return this.updateItem(id, updates);
+  }
+
+  /** Apply many position updates in one go; notifies once. Used by reflowGrid to avoid N renders. */
+  applyPositionUpdates(updates) {
+    if (!Array.isArray(updates) || !updates.length) return;
+    let changed = false;
+    for (const { id, x, y } of updates) {
+      if (id == null || (!Number.isFinite(x) && !Number.isFinite(y))) continue;
+      const idx = this.state.items.findIndex((item) => item.id === id);
+      if (idx === -1) continue;
+      const item = this.state.items[idx];
+      const newX = Number.isFinite(x) ? Math.max(0, x) : item.x;
+      const newY = Number.isFinite(y) ? Math.max(0, y) : item.y;
+      if (item.x !== newX || item.y !== newY) {
+        item.x = newX;
+        item.y = newY;
+        changed = true;
+      }
+    }
+    if (changed) this.notify();
+  }
+
+  // Shift every item down by `offset` rows so (0,0) is free for a new tile. Notifies once.
+  shiftAllRowsDown(offset = 1) {
+    if (offset <= 0) return;
+    this.state.items.forEach((item) => {
+      item.y += offset;
+    });
+    this.notify();
   }
 
   deleteItem(id) {
