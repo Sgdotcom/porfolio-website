@@ -237,6 +237,37 @@ body {
   font-weight: 400;
 }
 
+/* Touch feedback styles */
+.touch-device .moodboard-post.touch-active {
+  transform: scale(0.95);
+  transition: transform 0.1s ease;
+  opacity: 0.8;
+}
+
+/* Touch support for mobile devices */
+@media (hover: none) and (pointer: coarse) {
+  .moodboard-post {
+    cursor: default;
+  }
+  
+  .moodboard-post:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+  
+  .moodboard-post:hover {
+    transform: none;
+  }
+  
+  .moodboard-post .caption {
+    opacity: 1;
+    transform: translateY(0);
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+    padding: 15px 10px 10px;
+    font-size: 12px;
+  }
+}
+
 /* Mobile Responsive with performance optimizations */
 @media (max-width: 1200px) {
   .moodboard-grid {
@@ -250,19 +281,138 @@ body {
   }
 }
 
+/* Mobile-specific performance optimizations */
+@media (max-width: 768px) {
+  .moodboard-post img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: optimize-contrast;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+  
+  .moodboard-post video {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+  
+  /* Reduce motion on mobile for better performance */
+  .moodboard-post {
+    transition: transform 0.2s ease;
+  }
+  
+  .moodboard-post:hover {
+    transform: scale(1.02);
+  }
+}
+
 @media (max-width: 768px) {
   .moodboard-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 2px;
   }
 
   .moodboard-post img,
   .moodboard-post.text-placeholder {
-    min-height: 140px;
+    min-height: 120px;
+  }
+
+  .moodboard-header {
+    margin-bottom: 20px;
+    padding: 0 10px;
+  }
+
+  .moodboard-header h1 {
+    font-size: clamp(18px, 5vw, 32px);
+    white-space: normal;
+    line-height: 1.1;
+  }
+
+  .moodboard-header p {
+    font-size: 12px;
+    padding: 0 10px;
+  }
+
+  .top-bar {
+    padding: 10px 15px;
+  }
+
+  .top-bar .left a {
+    font-size: 11px;
   }
 }
 
 @media (max-width: 576px) {
   .moodboard-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    margin: 0 5px;
+    width: calc(100% - 10px);
+  }
+
+  .moodboard-post {
+    aspect-ratio: 1 / 1;
+  }
+
+  .moodboard-post img,
+  .moodboard-post.text-placeholder {
+    min-height: 150px;
+  }
+
+  .moodboard-header h1 {
+    font-size: clamp(16px, 6vw, 28px);
+    margin-bottom: 15px;
+  }
+
+  .moodboard-header p {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .moodboard-container {
+    padding: 5px;
+    margin: 5px 0 0;
+  }
+
+  .top-bar {
+    padding: 8px 10px;
+  }
+
+  .top-bar .left a {
+    font-size: 10px;
+  }
+
+  .moodboard-post:hover {
+    transform: scale(1.02);
+  }
+
+  .moodboard-post.text-only,
+  .moodboard-post.text-break,
+  .moodboard-post.wide-text {
+    min-height: 120px;
+    padding: 8px;
+  }
+
+  .moodboard-post.text-only p,
+  .moodboard-post.text-break p,
+  .moodboard-post.wide-text p {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 380px) {
+  .moodboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    margin: 0 2px;
+    width: calc(100% - 4px);
+  }
+
+  .moodboard-post img,
+  .moodboard-post.text-placeholder {
+    min-height: 140px;
+  }
+
+  .top-bar .left a {
+    font-size: 9px;
   }
 }

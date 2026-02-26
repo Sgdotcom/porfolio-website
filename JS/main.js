@@ -1220,6 +1220,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function ensureGlobalExportButton() {
+    // Export button disabled
+    return;
+    
     if (dom.query('#global-export-btn')) return;
 
     const exportButton = document.createElement('button');
@@ -1283,6 +1286,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initial lazy load pass for static content.
   activateLazyLoad(document);
+
+  // Mobile-specific optimizations
+  if ('ontouchstart' in window) {
+    document.body.classList.add('touch-device');
+    
+    // Add touch feedback for moodboard posts
+    document.addEventListener('touchstart', function(e) {
+      if (e.target.closest('.moodboard-post')) {
+        e.target.closest('.moodboard-post').classList.add('touch-active');
+      }
+    }, { passive: true });
+    
+    document.addEventListener('touchend', function(e) {
+      setTimeout(() => {
+        document.querySelectorAll('.touch-active').forEach(el => {
+          el.classList.remove('touch-active');
+        });
+      }, 150);
+    }, { passive: true });
+  }
 
   // Make available for other existing integrations.
   window.enableTextEditing = enableTextEditing;
