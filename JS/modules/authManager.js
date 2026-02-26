@@ -22,7 +22,9 @@ export class AuthManager {
 
     this.loginForm = this.overlay.querySelector('form');
     this.statusElement = this.overlay.querySelector('[data-login-status]');
-    this.overlay.classList.remove('hidden');
+    if (!this.token) {
+      this.overlay.classList.remove('hidden');
+    }
 
     if (this.loginForm) {
       this.loginForm.addEventListener('submit', (event) => {

@@ -38,21 +38,35 @@
 
 ### 2. Deploy Files
 ```bash
-# Navigate to website directory
-cd "/Users/simongrey/Desktop/my website"
-
-# Run deployment script
+# From the project root (e.g. worktree or repo root)
 ./deploy.sh
 ```
 
-### 3. Post-Deployment Verification
+### 3. Moodboard (WDIGFH) on GitHub Pages
+
+The moodboard uses **GitHub API** for edit-mode publish (no PHP, no server uploads). Deploy as static files.
+
+**Key files to include:**
+- `wdigfh.html`
+- `JS/main.js`, `JS/wdigfh.js`
+- `JS/modules/stateManager.js`, `gridEngine.js`, `uiController.js`, `authManager.js`, `githubApiManager.js`
+- `css/wdigfh-standalone.css`
+- `assets/pictures-of/gallery.json` (and any images/videos referenced there)
+
+**GitHub Pages setup:** Settings → Pages → Source: Deploy from branch → branch `main` (or your default) → / (root). Site URL: `https://<owner>.github.io/<repo>/wdigfh.html`
+
+**Edit mode:** `wdigfh.html?edit=1` — auth required (daily password; see browser console when needed). Publish writes `gallery.json` and uploads to the repo via GitHub API.
+
+**Visitor guide:** See `PUBLIC_GALLERY_GUIDE.md` for the public moodboard experience.
+
+### 4. Post-Deployment Verification
 - [ ] **SEO Testing**: Use Google Search Console
 - [ ] **Performance**: Google PageSpeed Insights test
 - [ ] **Mobile**: Test on actual devices
 - [ ] **Accessibility**: WAVE or axe DevTools
 - [ ] **Analytics**: Check Google Analytics data
 
-### 4. Submit to Search Engines
+### 5. Submit to Search Engines
 - [ ] **Google**: Submit sitemap via Search Console
 - [ ] **Bing**: Submit to Bing Webmaster Tools
 - [ ] **Local**: Google My Business listing
