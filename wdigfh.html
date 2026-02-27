@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <title>Where Do I Go From Here - Simon Grey</title>
   <link rel="icon" type="image/x-icon" href="assets/home/Artboard 1.png">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="css/wdigfh-standalone.css">
   <meta http-equiv="Cache-Control" content="max-age=31536000, public">
   <meta http-equiv="Expires" content="Wed, 20 Feb 2026 12:00:00 GMT">
@@ -13,10 +13,25 @@
     content="Simon Grey's Where Do I Go From Here - Creative inspiration, design thoughts, and behind-the-scenes process from a Stockholm-based visual communications student.">
   <meta name="keywords"
     content="Simon Grey, Where Do I Go From Here, creative inspiration, design process, Stockholm, visual communications, blog, creative thoughts">
+  <meta name="github-owner" content="Sgdotcom">
+  <meta name="github-repo" content="porfolio-website">
+  <meta name="github-branch" content="testing-cms">
   <script src="JS/main.js" defer></script>
+  <script type="module" src="JS/wdigfh.js" defer></script>
 </head>
 
 <body>
+
+  <div id="edit-login-overlay" class="edit-login-overlay hidden" role="dialog" aria-modal="true">
+    <div class="edit-login-card">
+      <h2>Secure CMS Access</h2>
+      <p>Enter your admin token to unlock edit mode. Visit <code>?edit=1</code> and check the console for the daily password.</p>
+      <form>
+        <input type="password" name="cms-password" placeholder="Admin token" autocomplete="off" required>
+        <button type="submit">Unlock edit mode</button>
+      </form>
+    </div>
+  </div>
 
   <header class="top-bar">
     <div class="left">
@@ -37,6 +52,48 @@
     <div class="moodboard-header">
       <h1>WHERE DO I GO FROM HERE?</h1>
       <p>This is The Dump. My creative inspiration, design thoughts, and behind-the-scenes process.</p>
+    </div>
+
+    <div id="moodboard-controls" class="moodboard-controls hidden" aria-label="Moodboard editor controls">
+      <button type="button" data-action="add-image" class="control-button">Add Image</button>
+      <input type="file" name="add-image" accept="image/*" multiple class="hidden" />
+      <button type="button" data-action="add-text" class="control-button">Add Text</button>
+      <button type="button" data-action="delete-item" class="control-button" disabled>Delete Item</button>
+      <button type="button" data-action="publish" class="control-button">Publish</button>
+      <div class="control-picker">
+        <label for="bg-color-picker">BG</label>
+        <input id="bg-color-picker" name="bg-color" type="color" value="#ffffff">
+      </div>
+      <div class="control-picker">
+        <label for="text-color-picker">Text</label>
+        <input id="text-color-picker" name="text-color" type="color" value="#000000">
+      </div>
+      <div class="control-picker">
+        <label for="font-size-select">Font</label>
+        <select id="font-size-select" name="font-size" aria-label="Font size (selected text)">
+          <option value="12">12</option>
+          <option value="14">14</option>
+          <option value="16" selected>16</option>
+          <option value="18">18</option>
+          <option value="20">20</option>
+          <option value="24">24</option>
+          <option value="28">28</option>
+          <option value="32">32</option>
+        </select>
+      </div>
+      <div class="control-picker edit-tab-align">
+        <label for="text-align-select">Align</label>
+        <select id="text-align-select" name="text-align" aria-label="Text alignment">
+          <option value="left">Left</option>
+          <option value="center">Center</option>
+          <option value="right">Right</option>
+        </select>
+      </div>
+      <div class="control-picker edit-tab-lists">
+        <button type="button" data-action="list-bullet" class="control-button control-button-icon" title="Bullet list" aria-label="Bullet list">•</button>
+        <button type="button" data-action="list-numbered" class="control-button control-button-icon" title="Numbered list" aria-label="Numbered list">1.</button>
+      </div>
+      <span class="control-status" data-status>View mode</span>
     </div>
 
     <div class="moodboard-grid" id="moodboard-grid">

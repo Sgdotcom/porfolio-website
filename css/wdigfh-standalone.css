@@ -17,6 +17,10 @@ body {
   color: var(--text);
 }
 
+.hidden {
+  display: none !important;
+}
+
 .top-bar {
   background: rgba(255, 255, 255, 0.2);
   position: sticky;
@@ -36,7 +40,11 @@ body {
   padding: 0;
   width: calc(100% - 20px);
   box-sizing: border-box;
-  row-gap: 0;
+  /* Let JS dictacte row height so we can strictly enforce a 4:5 aspect ratio */
+  grid-auto-rows: min-content;
+  justify-items: stretch;
+  align-items: stretch;
+  background: var(--bg);
 }
 
 /* Post Styles */
@@ -46,14 +54,16 @@ body {
   transition: transform 0.3s ease;
   cursor: pointer;
   position: relative;
-  aspect-ratio: 3 / 4;
+  min-height: 0;
+  height: 100%;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   /* Performance optimizations */
   will-change: transform;
   backface-visibility: hidden;
-  transform: scale(1.005) translateZ(0); /* Scale slightly to hide sub-pixel grid lines */
+  transform: scale(1.005) translateZ(0);
+  /* Scale slightly to hide sub-pixel grid lines */
 }
 
 .moodboard-post.text-placeholder {
@@ -83,6 +93,18 @@ body {
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   padding: 5px 10px;
   text-transform: none;
+}
+
+.moodboard-post img,
+.moodboard-post video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 .moodboard-post.photo-only video {
@@ -124,6 +146,277 @@ body {
   opacity: 1;
 }
 
+/* Empty or failed image tiles: avoid plain white, show subtle placeholder */
+.moodboard-post.photo-only img.moodboard-img-placeholder,
+.moodboard-post.photo-only img.moodboard-img-error {
+  background: #e8e8e8;
+  object-fit: none;
+}
+.moodboard-post.photo-only img.moodboard-img-error {
+  background: #e0e0e0;
+}
+
+/* Video tiles: same fill as images; placeholder when no source */
+.moodboard-post.moodboard-post-video {
+  position: relative;
+  overflow: hidden;
+}
+.moodboard-post.moodboard-post-video video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block !important;
+  position: absolute;
+  top: 0;
+  left: 0;
+  min-height: 100px;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 1;
+}
+.moodboard-post.moodboard-post-video video.moodboard-video-placeholder {
+  background: #e8e8e8;
+}
+/* Unsupported format or load failure (e.g. .mov in Chrome/Firefox) */
+.moodboard-post.moodboard-post-video video.moodboard-video-error {
+  background: #e0d0c0;
+  object-fit: none;
+}
+.moodboard-post.moodboard-post-video .moodboard-video-error-msg {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 6px 8px;
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+  font-size: 11px;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.moodboard-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 0 auto 20px;
+  max-width: 1200px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 999px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  position: sticky;
+  top: 64px;
+  z-index: 50;
+}
+
+.moodboard-controls.hidden {
+  display: none;
+}
+
+.control-button {
+  border: none;
+  background: #111;
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.control-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.control-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.control-picker {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+  gap: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.control-picker input {
+  width: 94px;
+}
+
+.control-picker select {
+  min-width: 56px;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+
+/* Global Edit tab: text alignment and list controls (outside tiles) */
+.edit-tab-align select,
+.edit-tab-align select[name="text-align"] {
+  min-width: 80px;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.edit-tab-lists {
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.control-button-icon {
+  min-width: 32px;
+  padding: 6px 8px;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.control-status {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.control-status[data-status="error"] {
+  color: #c0392b;
+}
+
+.edit-login-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.edit-login-overlay.hidden {
+  display: none;
+}
+
+.edit-login-card {
+  background: #111;
+  color: #fff;
+  padding: 32px;
+  border-radius: 18px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.edit-login-card h2 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-size: 1.2rem;
+}
+
+.edit-login-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.edit-login-card input {
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: none;
+  font-size: 1rem;
+}
+
+.edit-login-card button {
+  border: none;
+  border-radius: 999px;
+  padding: 12px;
+  background: #fff;
+  color: #111;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.moodboard-post.editable {
+  outline: 1px dashed transparent;
+  transition: outline 0.2s ease, box-shadow 0.2s ease, transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.moodboard-post.editable:hover {
+  outline: 1px dashed rgba(255, 255, 255, 0.5);
+}
+
+.moodboard-post.dragging {
+  opacity: 0.9;
+  z-index: 100 !important;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+  cursor: grabbing !important;
+  /* Disable layout transitions while actively dragging */
+  transition: opacity 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.moodboard-post.dragging .drag-handle {
+  cursor: grabbing;
+}
+
+.moodboard-post.selected {
+  outline: 2px solid #ffcc00;
+}
+
+.moodboard-post .drag-handle,
+.moodboard-post .resize-handle {
+  position: absolute;
+  background: rgba(17, 17, 17, 0.8);
+  color: #fff;
+  font-size: 0.65rem;
+  padding: 4px;
+  border-radius: 999px;
+  cursor: grab;
+  /* CRITICAL FIX: Handles must sit above the absolutely positioned images/videos to receive clicks */
+  z-index: 20;
+  user-select: none;
+}
+
+.moodboard-post .drag-handle {
+  top: 6px;
+  right: 6px;
+  opacity: 0.8;
+}
+
+.moodboard-post .resize-handle {
+  bottom: 6px;
+  right: 6px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+  cursor: nwse-resize;
+}
+
+@media (max-width: 900px) {
+  .moodboard-controls {
+    position: static;
+    top: auto;
+    border-radius: 12px;
+  }
+}
+
 /* Simplified text block styling */
 .moodboard-post.text-only,
 .moodboard-post.text-break,
@@ -148,6 +441,49 @@ body {
   font-size: 14px;
   margin: 0;
   color: rgba(0, 0, 0, 0.85);
+}
+
+/* New text tiles (CMS): match header paragraph style */
+.moodboard-post .text-only-content {
+  font-size: var(--font-body);
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+  color: #666;
+  font-weight: 400;
+  margin: 0;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Text tile formatting toolbar (edit mode only) */
+.text-tile-toolbar-wrap {
+  width: 100%;
+  margin-bottom: 6px;
+}
+.text-tile-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+.text-tile-toolbar-btn {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  background: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.text-tile-toolbar-btn:hover {
+  background: #f0f0f0;
 }
 
 .moodboard-post .caption {
@@ -237,37 +573,6 @@ body {
   font-weight: 400;
 }
 
-/* Touch feedback styles */
-.touch-device .moodboard-post.touch-active {
-  transform: scale(0.95);
-  transition: transform 0.1s ease;
-  opacity: 0.8;
-}
-
-/* Touch support for mobile devices */
-@media (hover: none) and (pointer: coarse) {
-  .moodboard-post {
-    cursor: default;
-  }
-  
-  .moodboard-post:active {
-    transform: scale(0.98);
-    transition: transform 0.1s ease;
-  }
-  
-  .moodboard-post:hover {
-    transform: none;
-  }
-  
-  .moodboard-post .caption {
-    opacity: 1;
-    transform: translateY(0);
-    background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
-    padding: 15px 10px 10px;
-    font-size: 12px;
-  }
-}
-
 /* Mobile Responsive with performance optimizations */
 @media (max-width: 1200px) {
   .moodboard-grid {
@@ -281,138 +586,19 @@ body {
   }
 }
 
-/* Mobile-specific performance optimizations */
-@media (max-width: 768px) {
-  .moodboard-post img {
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: optimize-contrast;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-  }
-  
-  .moodboard-post video {
-    transform: translateZ(0);
-    backface-visibility: hidden;
-  }
-  
-  /* Reduce motion on mobile for better performance */
-  .moodboard-post {
-    transition: transform 0.2s ease;
-  }
-  
-  .moodboard-post:hover {
-    transform: scale(1.02);
-  }
-}
-
 @media (max-width: 768px) {
   .moodboard-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 2px;
-  }
-
-  .moodboard-post img,
-  .moodboard-post.text-placeholder {
-    min-height: 120px;
-  }
-
-  .moodboard-header {
-    margin-bottom: 20px;
-    padding: 0 10px;
-  }
-
-  .moodboard-header h1 {
-    font-size: clamp(18px, 5vw, 32px);
-    white-space: normal;
-    line-height: 1.1;
-  }
-
-  .moodboard-header p {
-    font-size: 12px;
-    padding: 0 10px;
-  }
-
-  .top-bar {
-    padding: 10px 15px;
-  }
-
-  .top-bar .left a {
-    font-size: 11px;
-  }
-}
-
-@media (max-width: 576px) {
-  .moodboard-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1px;
-    margin: 0 5px;
-    width: calc(100% - 10px);
-  }
-
-  .moodboard-post {
-    aspect-ratio: 1 / 1;
-  }
-
-  .moodboard-post img,
-  .moodboard-post.text-placeholder {
-    min-height: 150px;
-  }
-
-  .moodboard-header h1 {
-    font-size: clamp(16px, 6vw, 28px);
-    margin-bottom: 15px;
-  }
-
-  .moodboard-header p {
-    font-size: 11px;
-    line-height: 1.4;
-  }
-
-  .moodboard-container {
-    padding: 5px;
-    margin: 5px 0 0;
-  }
-
-  .top-bar {
-    padding: 8px 10px;
-  }
-
-  .top-bar .left a {
-    font-size: 10px;
-  }
-
-  .moodboard-post:hover {
-    transform: scale(1.02);
-  }
-
-  .moodboard-post.text-only,
-  .moodboard-post.text-break,
-  .moodboard-post.wide-text {
-    min-height: 120px;
-    padding: 8px;
-  }
-
-  .moodboard-post.text-only p,
-  .moodboard-post.text-break p,
-  .moodboard-post.wide-text p {
-    font-size: 12px;
-  }
-}
-
-@media (max-width: 380px) {
-  .moodboard-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0;
-    margin: 0 2px;
-    width: calc(100% - 4px);
   }
 
   .moodboard-post img,
   .moodboard-post.text-placeholder {
     min-height: 140px;
   }
+}
 
-  .top-bar .left a {
-    font-size: 9px;
+@media (max-width: 576px) {
+  .moodboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
