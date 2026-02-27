@@ -62,8 +62,8 @@ body {
   /* Performance optimizations */
   will-change: transform;
   backface-visibility: hidden;
-  transform: scale(1.005) translateZ(0);
-  /* Scale slightly to hide sub-pixel grid lines */
+  transform: translateZ(0);
+  /* Avoid base per-tile scaling to prevent anti-aliased seams between tiles */
 }
 
 .moodboard-post.text-placeholder {
