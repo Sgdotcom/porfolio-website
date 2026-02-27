@@ -27,14 +27,24 @@ export class GitHubApiManager {
     });
 
     if (!response.ok) {
-      throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+      let detail = '';
+      try {
+        const payload = await response.json();
+        detail = payload?.message ? ` - ${payload.message}` : '';
+      } catch (_) {
+        // Ignore JSON parse failure for non-JSON error bodies
+      }
+      const error = new Error(`GitHub API error: ${response.status} ${response.statusText}${detail}`);
+      error.status = response.status;
+      throw error;
     }
 
     return response.json();
   }
 
   async getFileSha(path) {
-    const response = await fetch(`https://api.github.com/repos/${this.owner}/${this.repo}/contents/${path}`, {
+    const ref = encodeURIComponent(this.branch);
+    const response = await fetch(`https://api.github.com/repos/${this.owner}/${this.repo}/contents/${path}?ref=${ref}`, {
       headers: this._buildHeaders()
     });
     if (response.status === 404) return null;
@@ -46,17 +56,29 @@ export class GitHubApiManager {
   }
 
   async updateFile(path, contentBase64, message) {
-    const sha = await this.getFileSha(path);
-    const body = {
-      message,
-      content: contentBase64,
-      branch: this.branch,
-      sha: sha || undefined
+    const putOnce = async () => {
+      const sha = await this.getFileSha(path);
+      const body = {
+        message,
+        content: contentBase64,
+        branch: this.branch,
+        sha: sha || undefined
+      };
+      return this._request(path, {
+        method: 'PUT',
+        body: JSON.stringify(body)
+      });
     };
-    return this._request(path, {
-      method: 'PUT',
-      body: JSON.stringify(body)
-    });
+
+    try {
+      return await putOnce();
+    } catch (error) {
+      // Branch head can move between SHA read and PUT; retry once with fresh SHA.
+      if (error?.status === 409) {
+        return putOnce();
+      }
+      throw error;
+    }
   }
 
   async uploadImage(path, base64) {

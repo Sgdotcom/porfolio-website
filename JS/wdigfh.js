@@ -179,8 +179,11 @@ fetch('assets/pictures-of/gallery.json')
   .then((data) => {
     const raw = Array.isArray(data.items) ? data.items : [];
     const items = dedupeItemsByPath(raw);
-    // Drop image/video items with no path so we never render white/empty tiles
-    const withPath = items.filter((it) => (it.path || it.src || '').trim().length > 0);
+    // Keep text items even without path; only drop media items missing path/src.
+    const withPath = items.filter((it) => {
+      if ((it.type || '').toLowerCase() === 'text') return true;
+      return (it.path || it.src || '').trim().length > 0;
+    });
     // Preserve videos from HTML (fallbackLayout) so they are never lost when loading gallery
     const pathSet = new Set(withPath.map((it) => (it.path || it.src || '').trim()));
     const fallbackVideos = fallbackLayout.filter(
@@ -194,8 +197,11 @@ fetch('assets/pictures-of/gallery.json')
     gridEngine.normalizeLayout();
   })
   .catch(() => {
-    // Strip placeholder text tiles (no path) so we don't show white "THE"/"DUMP" tiles
-    const fallback = fallbackLayout.filter((it) => (it.path || it.src || '').trim().length > 0);
+    // Keep text tiles; only strip media entries with no path/src.
+    const fallback = fallbackLayout.filter((it) => {
+      if ((it.type || '').toLowerCase() === 'text') return true;
+      return (it.path || it.src || '').trim().length > 0;
+    });
     stateManager.loadState({ items: fallback });
     gridEngine.normalizeLayout();
   });
