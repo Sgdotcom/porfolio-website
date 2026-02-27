@@ -65,8 +65,9 @@ export class GridEngine {
     const width = fallbackWidth || this.gridElement.getBoundingClientRect().width;
     const columnWidth = width / Math.max(1, this.columns);
 
-    // We explicitly want 4:5 portrait aspect ratio blocks, so Height = Width * 1.25
-    return columnWidth * 1.25;
+    // We explicitly want 4:5 portrait aspect ratio blocks, so Height = Width * 1.25.
+    // Round to whole pixels to avoid sub-pixel anti-alias seams between grid rows.
+    return Math.max(1, Math.round(columnWidth * 1.25));
   }
 
   render(items = []) {
