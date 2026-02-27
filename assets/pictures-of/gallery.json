@@ -5909,14 +5909,14 @@
       "type": "text",
       "path": "",
       "src": "",
-      "caption": "<div style=\"text-align: center;\"><span style=\"letter-spacing: 0.02em;\"><span style=\"font-size: 32px;\">THE DUMP</span></span></div>",
-      "content": "<div style=\"text-align: center;\"><span style=\"letter-spacing: 0.02em;\"><span style=\"font-size: 32px;\">THE DUMP</span></span></div>",
+      "caption": "<div style=\"text-align: center;\"><span style=\"letter-spacing: 0.02em;\"><span style=\"font-size: 32px;\"><br></span></span></div><div style=\"text-align: center;\"><span style=\"letter-spacing: 0.02em;\"><span style=\"font-size: 32px;\">THE DUMP</span></span></div>",
+      "content": "<div style=\"text-align: center;\"><span style=\"letter-spacing: 0.02em;\"><span style=\"font-size: 32px;\"><br></span></span></div><div style=\"text-align: center;\"><span style=\"letter-spacing: 0.02em;\"><span style=\"font-size: 32px;\">THE DUMP</span></span></div>",
       "x": 0,
       "y": 0,
       "w": 10,
       "h": 1,
-      "bgColor": "#000000",
-      "textColor": "#ff0000",
+      "bgColor": "#0021a3",
+      "textColor": "#ffffff",
       "fontSize": 12,
       "textAlign": "left"
     }
