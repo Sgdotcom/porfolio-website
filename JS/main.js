@@ -2,13 +2,66 @@
    Global Public Helpers
    ========================================================================== */
 window.toggleDescription = function toggleDescription(button) {
+  if (!button) return;
   const detailColumn = button.closest('.detail-col');
   if (!detailColumn) return;
 
   const detailText = detailColumn.querySelector('.detail-text');
   if (!detailText) return;
 
-  const isExpanded = detailText.classList.toggle('expanded');
+  const isExpanded = !detailText.classList.contains('expanded');
+  const ua = navigator.userAgent || '';
+  const isSafariBrowser = /Safari/i.test(ua) && !/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|Chromium|Edg|OPR/i.test(ua);
+  const needsSafariTouchFallback = isSafariBrowser;
+  if (detailText._expandTimer) {
+    clearTimeout(detailText._expandTimer);
+    detailText._expandTimer = null;
+  }
+  if (isExpanded) {
+    detailText.classList.add('expanded');
+    if (needsSafariTouchFallback) {
+      // Safari-on-Apple-touch fallback: avoid max-height animation quirks and force full visibility.
+      // Disable multicolumn layout in Safari fallback; `column-count: 1` still triggers
+      // WebKit column fragmentation in this flow and can collapse height to ~1px.
+      detailText.style.webkitColumnCount = 'auto';
+      detailText.style.columnCount = 'auto';
+      detailText.style.webkitColumnWidth = 'auto';
+      detailText.style.columnWidth = 'auto';
+      detailText.style.webkitColumnGap = 'normal';
+      detailText.style.columnGap = 'normal';
+      detailText.style.transition = 'none';
+      detailText.style.maxHeight = 'none';
+      detailText.style.overflow = 'visible';
+      requestAnimationFrame(() => { detailText.style.transition = ''; });
+    } else {
+      detailText.style.overflow = 'hidden';
+      detailText.style.maxHeight = '0px';
+      requestAnimationFrame(() => {
+        detailText.style.maxHeight = `${detailText.scrollHeight}px`;
+      });
+      detailText._expandTimer = setTimeout(() => {
+        if (detailText.classList.contains('expanded')) {
+          detailText.style.maxHeight = 'none';
+          detailText.style.overflow = 'visible';
+        }
+        detailText._expandTimer = null;
+      }, 360);
+    }
+  } else {
+    if (needsSafariTouchFallback) {
+      detailText.classList.remove('expanded');
+      detailText.style.maxHeight = '0px';
+      detailText.style.overflow = 'hidden';
+    } else {
+      detailText.style.maxHeight = `${detailText.scrollHeight}px`;
+      requestAnimationFrame(() => {
+        detailText.classList.remove('expanded');
+        detailText.style.maxHeight = '0px';
+      });
+      detailText.style.overflow = 'hidden';
+    }
+  }
+  button.setAttribute('aria-expanded', String(isExpanded));
   button.textContent = isExpanded ? 'Show Less -' : 'Show More +';
 };
 
@@ -133,6 +186,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  function bindToggleButtons(container = document) {
+    dom.queryAll('.toggle-btn', container).forEach((button) => {
+      if (!(button instanceof HTMLButtonElement)) return;
+      if (button.dataset.toggleBound === 'true') return;
+      button.dataset.toggleBound = 'true';
+      button.type = 'button';
+      // Avoid duplicate toggles from inline handlers in cloned template content.
+      button.removeAttribute('onclick');
+      const handleToggle = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        window.toggleDescription(button);
+      };
+      button.addEventListener('click', handleToggle);
+      button.addEventListener('touchend', handleToggle, { passive: false });
+      button.addEventListener('pointerup', handleToggle);
+    });
+  }
+
   const appState = {
     reorderEnabled: (() => {
       const params = new URLSearchParams(window.location.search);
@@ -146,6 +218,20 @@ document.addEventListener('DOMContentLoaded', () => {
     lightboxImages: [],
     lightboxIndex: 0
   };
+
+  function resetDescriptionToggles(container) {
+    if (!container) return;
+    dom.queryAll('.detail-col', container).forEach((detailCol) => {
+      const detailText = dom.query('.detail-text', detailCol);
+      const toggleButton = dom.query('.toggle-btn', detailCol);
+      if (!detailText || !toggleButton) return;
+      detailText.classList.remove('expanded');
+      detailText.style.maxHeight = '0px';
+      detailText.style.overflow = 'hidden';
+      toggleButton.setAttribute('aria-expanded', 'false');
+      toggleButton.textContent = 'Show More +';
+    });
+  }
 
   /* ----------------------------------------------------------------------
      Lazy Media Loader
@@ -602,18 +688,31 @@ document.addEventListener('DOMContentLoaded', () => {
   function initContactMenu() {
     const contactWrapper = dom.query('.contact-wrapper');
     const contactOverlay = dom.query('#contact-overlay');
+    const contactLink = dom.query('.contact-wrapper > a');
     if (!contactWrapper || !contactOverlay) return;
 
-    contactWrapper.addEventListener('click', (event) => {
+    const toggleContact = (event) => {
       if (contactOverlay.contains(event.target)) return;
       event.stopPropagation();
       event.preventDefault();
+      const now = Date.now();
+      const last = Number(contactWrapper.dataset.lastToggleAt || 0);
+      if (now - last < 300) return;
+      contactWrapper.dataset.lastToggleAt = String(now);
       motion.afterDelay(CONFIG.motion.contactToggleDelayMs, () => {
         contactWrapper.classList.toggle('active');
       });
-    });
+    };
+    if (contactLink) {
+      contactLink.addEventListener('click', toggleContact);
+      contactLink.addEventListener('touchend', toggleContact, { passive: false });
+    } else {
+      // Fallback if markup changes and anchor is missing.
+      contactWrapper.addEventListener('click', toggleContact);
+    }
 
-    document.addEventListener('click', () => {
+    document.addEventListener('click', (event) => {
+      if (contactWrapper.contains(event.target)) return;
       contactWrapper.classList.remove('active');
     });
   }
@@ -643,6 +742,24 @@ document.addEventListener('DOMContentLoaded', () => {
     initContactMenu();
     fillFooterRepeatLine();
     window.addEventListener('resize', fillFooterRepeatLine);
+  }
+
+  function initHeroFallback() {
+    const ua = navigator.userAgent || '';
+    const isSafari = /Safari/i.test(ua) && !/Chrome|CriOS|Edg|OPR|FxiOS/i.test(ua);
+    if (isSafari) {
+      document.body.classList.add('hide-hero-safari');
+      return;
+    }
+
+    const heroVideo = dom.query('.home-hero video');
+    if (!heroVideo) return;
+    heroVideo.addEventListener('loadeddata', () => {
+      document.body.classList.remove('hero-video-fallback');
+    });
+    heroVideo.addEventListener('error', () => {
+      document.body.classList.add('hero-video-fallback');
+    });
   }
 
   /* ----------------------------------------------------------------------
@@ -734,6 +851,8 @@ document.addEventListener('DOMContentLoaded', () => {
     section.classList.remove('home-project-shell');
     section.dataset.hydrated = 'true';
     section.appendChild(content);
+    bindToggleButtons(section);
+    resetDescriptionToggles(section);
 
     activateLazyLoad(section);
     enablePhotoReorder(section);
@@ -862,6 +981,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const content = getTemplateClone(templateId) || createFallbackContent();
     contentWrapper.appendChild(content);
+    bindToggleButtons(contentWrapper);
+    resetDescriptionToggles(contentWrapper);
 
     rightSide.appendChild(contentWrapper);
 
@@ -922,6 +1043,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const templateContent = getTemplateClone(templateId) || createFallbackContent();
     content.appendChild(templateContent);
+    bindToggleButtons(content);
+    resetDescriptionToggles(content);
 
     mobileView.appendChild(content);
     document.body.appendChild(mobileView);
@@ -1281,8 +1404,10 @@ document.addEventListener('DOMContentLoaded', () => {
      ---------------------------------------------------------------------- */
 
   initHeaderUi();
+  initHeroFallback();
   initProjectSystem();
   initLightbox();
+  bindToggleButtons(document);
 
   // Initial lazy load pass for static content.
   activateLazyLoad(document);

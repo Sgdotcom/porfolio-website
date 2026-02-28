@@ -59,8 +59,8 @@ body {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  /* Performance optimizations */
-  will-change: transform;
+  /* Keep compositing pressure lower by default; enable on interaction only */
+  will-change: auto;
   backface-visibility: hidden;
   transform: translateZ(0);
   /* Avoid base per-tile scaling to prevent anti-aliased seams between tiles */
@@ -367,6 +367,11 @@ body {
   cursor: grabbing !important;
   /* Disable layout transitions while actively dragging */
   transition: opacity 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.moodboard-post.dragging,
+.moodboard-post.resizing {
+  will-change: transform;
 }
 
 .moodboard-post.dragging .drag-handle {

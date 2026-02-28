@@ -154,6 +154,15 @@ export class StateManager {
     return normalized;
   }
 
+  appendItems(items = []) {
+    if (!Array.isArray(items) || !items.length) return [];
+    const startIndex = this.state.items.length;
+    const normalized = items.map((item, index) => this.normalizeItem(item, startIndex + index));
+    this.state.items.push(...normalized);
+    this.notify();
+    return normalized;
+  }
+
   moveItem(id, coords = {}) {
     const { x, y } = coords;
     if (!Number.isFinite(x) && !Number.isFinite(y)) return false;

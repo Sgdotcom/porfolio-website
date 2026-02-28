@@ -3,8 +3,16 @@ import { GridEngine, buildLayoutFromDom } from './modules/gridEngine.js';
 import { AuthManager } from './modules/authManager.js';
 import { GitHubApiManager } from './modules/githubApiManager.js';
 import { UIController } from './modules/uiController.js';
+import { createSafariDiagnostics } from './modules/safariDiagnostics.js';
 
 const editMode = new URLSearchParams(window.location.search).get('edit') === '1';
+const safariDiagnostics = createSafariDiagnostics();
+const SAFARI_PROGRESSIVE_INITIAL_COUNT = 180;
+const SAFARI_PROGRESSIVE_CHUNK_SIZE = 140;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 const gridElement = document.querySelector('.moodboard-grid');
 const controlsElement = document.getElementById('moodboard-controls');
@@ -19,7 +27,7 @@ const layoutMap = fallbackLayout.reduce((acc, item) => {
 }, {});
 
 const COLUMNS = 10;
-function attachLayoutHints(items) {
+async function attachLayoutHints(items, chunkSize = 180) {
   const used = new Set();
   const mark = (x, y, w, h) => {
     for (let r = y; r < y + h; r++) for (let c = x; c < x + w; c++) used.add(`${c},${r}`);
@@ -36,7 +44,9 @@ function attachLayoutHints(items) {
     }
     return { x: 0, y: 0 };
   };
-  return items.map((item, index) => {
+  const output = [];
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
     const key = (item.path || item.src || '').trim();
     const layout = key ? layoutMap[key] : null;
     let x, y, w, h;
@@ -60,15 +70,19 @@ function attachLayoutHints(items) {
       }
     }
     mark(x, y, w, h);
-    return {
+    output.push({
       ...item,
       id: item.id || layout?.id,
       x,
       y,
       w,
       h
-    };
-  });
+    });
+    if (index > 0 && index % chunkSize === 0) {
+      await sleep(0);
+    }
+  }
+  return output;
 }
 
 const stateManager = new StateManager();
@@ -77,7 +91,8 @@ const gridEngine = new GridEngine({
   gridElement,
   columns: 10,
   stateManager,
-  editMode
+  editMode,
+  diagnostics: safariDiagnostics
 });
 const githubOwner = document.querySelector('meta[name="github-owner"]')?.content || window.location.hostname;
 const githubRepo = document.querySelector('meta[name="github-repo"]')?.content || 'porfolio-website';
@@ -105,6 +120,7 @@ const uiController = new UIController({
 });
 
 uiController.setStatus(editMode ? 'Edit mode' : 'View mode');
+if (gridElement) gridElement.style.visibility = 'hidden';
 
 const setUiEditMode = typeof uiController.setEditMode === 'function'
   ? uiController.setEditMode.bind(uiController)
@@ -171,13 +187,17 @@ function dedupeItemsByPath(items) {
   return [...byPath.values(), ...noPath];
 }
 
+safariDiagnostics.markStart('galleryFetch');
 fetch('assets/pictures-of/gallery.json')
   .then((response) => {
+    safariDiagnostics.markEnd('galleryFetch', { status: response.status });
     if (!response.ok) throw new Error('Unable to load gallery');
     return response.json();
   })
-  .then((data) => {
+  .then(async (data) => {
+    safariDiagnostics.markStart('initialStateBuild');
     const raw = Array.isArray(data.items) ? data.items : [];
+    safariDiagnostics.log('gallery-items', { count: raw.length });
     const items = dedupeItemsByPath(raw);
     // Keep text items even without path; only drop media items missing path/src.
     const withPath = items.filter((it) => {
@@ -192,16 +212,43 @@ fetch('assets/pictures-of/gallery.json')
         && !pathSet.has((it.path || it.src || '').trim())
     );
     const combined = fallbackVideos.length ? [...withPath, ...fallbackVideos] : withPath;
-    const payload = combined.length ? attachLayoutHints(combined) : fallbackLayout;
-    stateManager.loadState({ items: payload });
-    gridEngine.normalizeLayout();
+    const payload = combined.length ? await attachLayoutHints(combined) : fallbackLayout;
+    const shouldProgressivelyHydrate = safariDiagnostics.enabled && !editMode && payload.length > SAFARI_PROGRESSIVE_INITIAL_COUNT;
+    if (shouldProgressivelyHydrate) {
+      const initial = payload.slice(0, SAFARI_PROGRESSIVE_INITIAL_COUNT);
+      const rest = payload.slice(SAFARI_PROGRESSIVE_INITIAL_COUNT);
+      stateManager.loadState({ items: initial });
+      requestAnimationFrame(() => {
+        gridEngine.normalizeLayout();
+        if (gridElement) gridElement.style.visibility = '';
+      });
+      for (let i = 0; i < rest.length; i += SAFARI_PROGRESSIVE_CHUNK_SIZE) {
+        const chunk = rest.slice(i, i + SAFARI_PROGRESSIVE_CHUNK_SIZE);
+        stateManager.appendItems(chunk);
+        await sleep(0);
+      }
+    } else {
+      stateManager.loadState({ items: payload });
+      requestAnimationFrame(() => {
+        gridEngine.normalizeLayout();
+        if (gridElement) gridElement.style.visibility = '';
+      });
+    }
+    safariDiagnostics.markEnd('initialStateBuild', { payloadCount: payload.length });
+    safariDiagnostics.captureDomMediaStats();
   })
   .catch(() => {
+    safariDiagnostics.markEnd('galleryFetch', { status: 'error' });
+    safariDiagnostics.log('gallery-fetch-fallback');
     // Keep text tiles; only strip media entries with no path/src.
     const fallback = fallbackLayout.filter((it) => {
       if ((it.type || '').toLowerCase() === 'text') return true;
       return (it.path || it.src || '').trim().length > 0;
     });
     stateManager.loadState({ items: fallback });
-    gridEngine.normalizeLayout();
+    requestAnimationFrame(() => {
+      gridEngine.normalizeLayout();
+      if (gridElement) gridElement.style.visibility = '';
+    });
+    safariDiagnostics.captureDomMediaStats();
   });

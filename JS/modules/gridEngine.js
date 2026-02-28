@@ -37,6 +37,10 @@ export class GridEngine {
     this.breakpoints = options.breakpoints || GRID_BREAKPOINTS;
     this.selectionCallback = () => { };
     this.selectedId = null;
+    this.diagnostics = options.diagnostics || null;
+    this.maxConcurrentVideos = 2;
+    this.videoObserver = null;
+    this.visibleVideoSet = new Set();
 
     if (this.stateManager) {
       this.stateManager.subscribe(() => {
@@ -56,14 +60,60 @@ export class GridEngine {
     this.render(this.stateManager?.getItems() || []);
   }
 
+  ensureVideoObserver() {
+    if (this.videoObserver || typeof IntersectionObserver === 'undefined') return;
+    this.videoObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!(entry.target instanceof HTMLVideoElement)) return;
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.35) {
+          this.visibleVideoSet.add(entry.target);
+        } else {
+          this.visibleVideoSet.delete(entry.target);
+          try { entry.target.pause(); } catch (_) {}
+        }
+      });
+      this.applyVideoPlaybackPolicy();
+    }, { threshold: [0, 0.35, 0.75] });
+  }
+
+  observeVideo(videoEl) {
+    if (!videoEl) return;
+    this.ensureVideoObserver();
+    if (this.videoObserver) this.videoObserver.observe(videoEl);
+  }
+
+  applyVideoPlaybackPolicy() {
+    const visible = Array.from(this.visibleVideoSet).filter((v) => v && v.isConnected);
+    visible.sort((a, b) => {
+      const ar = a.getBoundingClientRect();
+      const br = b.getBoundingClientRect();
+      return ar.top - br.top;
+    });
+    visible.forEach((video, index) => {
+      if (index < this.maxConcurrentVideos) {
+        if (video.paused) {
+          video.play().catch((error) => {
+            const src = video.querySelector('source')?.src || video.currentSrc || video.getAttribute('src') || '';
+            this.diagnostics?.mediaPlayRejected?.(src, error);
+          });
+        }
+      } else {
+        try { video.pause(); } catch (_) {}
+      }
+    });
+  }
+
   getRowHeight(fallbackWidth = null) {
     if (!this.gridElement) return 0;
     const computed = window.getComputedStyle(this.gridElement);
-    const cssRowHeight = parseFloat(computed.getPropertyValue('--grid-row-height'));
+    const gridTemplateColumns = (computed.getPropertyValue('grid-template-columns') || '').trim();
+    const renderedColumns = gridTemplateColumns && gridTemplateColumns !== 'none'
+      ? gridTemplateColumns.split(/\s+/).filter(Boolean).length
+      : this.columns;
 
     // Always prioritize a calculated 4:5 Portrait CSS ratio if possible
     const width = fallbackWidth || this.gridElement.getBoundingClientRect().width;
-    const columnWidth = width / Math.max(1, this.columns);
+    const columnWidth = width / Math.max(1, renderedColumns);
 
     // We explicitly want 4:5 portrait aspect ratio blocks, so Height = Width * 1.25.
     // Round to whole pixels to avoid sub-pixel anti-alias seams between grid rows.
@@ -72,6 +122,7 @@ export class GridEngine {
 
   render(items = []) {
     if (!this.gridElement) return;
+    this.diagnostics?.markStart?.('gridRender');
 
     // Apply the strict portrait row height dynamically based on current client width
     this.gridElement.style.gridAutoRows = `${this.getRowHeight()}px`;
@@ -80,6 +131,9 @@ export class GridEngine {
     Array.from(this.gridElement.children).forEach((child) => {
       const id = child.dataset.itemId;
       if (!items.find((item) => item.id === id) && id !== this.selectedId) {
+        const video = child.querySelector('video');
+        if (video && this.videoObserver) this.videoObserver.unobserve(video);
+        if (video) this.visibleVideoSet.delete(video);
         const img = child.querySelector('img');
         if (img?._objectURL) URL.revokeObjectURL(img._objectURL);
         child.remove();
@@ -145,9 +199,9 @@ export class GridEngine {
                 if (oldMsg) oldMsg.remove();
                 source.src = src;
                 video.load();
-                video.play().catch(() => {});
+                this.observeVideo(video);
               } else if (video.paused && video.readyState >= 2) {
-                video.play().catch(() => {});
+                this.observeVideo(video);
               }
             }
             // Never set video source to empty; leave existing to avoid white tiles
@@ -169,6 +223,9 @@ export class GridEngine {
         this.gridElement.appendChild(post);
       }
     });
+    this.applyVideoPlaybackPolicy();
+    this.diagnostics?.captureDomMediaStats?.(this.gridElement);
+    this.diagnostics?.markEnd?.('gridRender', { itemCount: items.length });
   }
 
   createPost(item) {
@@ -187,11 +244,12 @@ export class GridEngine {
     if (item.type === 'image' || item.type === 'video' || isVideo(item)) {
       if (isVideo(item)) {
         const video = document.createElement('video');
-        video.autoplay = true;
+        video.autoplay = false;
         video.controls = false;
         video.loop = true;
         video.muted = true;
         video.playsInline = true;
+        video.preload = 'metadata';
         video.style.width = '100%';
         video.style.height = '100%';
         const source = document.createElement('source');
@@ -216,7 +274,7 @@ export class GridEngine {
             }
           });
           video.load();
-          video.play().catch(() => {});
+          this.observeVideo(video);
         } else {
           video.classList.add('moodboard-video-placeholder');
           video.appendChild(source);
@@ -628,10 +686,17 @@ export class GridEngine {
   // Deterministic reflow: place all items in stable order with no gaps. No gravity, no crushed-item logic.
   // Optional anchor: item that was just moved/resized; place it first at (anchor.x, anchor.y), then place the rest in first-fit.
   reflowGrid(anchor = null) {
-    if (!this.stateManager) return;
+    this.diagnostics?.markStart?.('reflowGrid');
+    if (!this.stateManager) {
+      this.diagnostics?.markEnd?.('reflowGrid', { movedCount: 0 });
+      return;
+    }
     const columns = this.columns;
     let items = this.stateManager.getItems().slice();
-    if (!items.length) return;
+    if (!items.length) {
+      this.diagnostics?.markEnd?.('reflowGrid', { movedCount: 0 });
+      return;
+    }
 
     const occupancy = [];
     const w = (it) => Math.max(1, Number(it.w) || 1);
@@ -692,6 +757,7 @@ export class GridEngine {
     if (positionUpdates.length) {
       this.stateManager.applyPositionUpdates(positionUpdates);
     }
+    this.diagnostics?.markEnd?.('reflowGrid', { movedCount: positionUpdates.length });
   }
 
   // Legacy API: delegates to deterministic reflow with this item as anchor.
@@ -702,7 +768,9 @@ export class GridEngine {
 
   // One-time deterministic reflow after load. No overlaps, no gaps.
   normalizeLayout() {
+    this.diagnostics?.markStart?.('normalizeLayout');
     this.reflowGrid();
+    this.diagnostics?.markEnd?.('normalizeLayout');
   }
 
 }

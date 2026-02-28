@@ -59,6 +59,14 @@ The moodboard uses **GitHub API** for edit-mode publish (no PHP, no server uploa
 
 **Visitor guide:** See `PUBLIC_GALLERY_GUIDE.md` for the public moodboard experience.
 
+#### Safari performance checklist (iPhone/iPad)
+- [ ] Test fresh load on iPhone Safari (normal mode and `?edit=1`) and confirm no tab reload/crash.
+- [ ] Open console and verify `[safari-diag]` logs show `gallery-items`, `gridRender`, and `dom-media`.
+- [ ] Confirm initial paint is stable (no fallback-first flicker/double-grid swap).
+- [ ] Verify videos only start when tiles are in/near viewport, with at most 1-2 videos playing simultaneously.
+- [ ] Scroll the moodboard for 20-30 seconds and confirm no sustained jank or Safari memory warning reload.
+- [ ] Run one edit + publish cycle and verify behavior matches non-Safari browsers.
+
 ### 4. Post-Deployment Verification
 - [ ] **SEO Testing**: Use Google Search Console
 - [ ] **Performance**: Google PageSpeed Insights test

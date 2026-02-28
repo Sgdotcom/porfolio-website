@@ -32,17 +32,17 @@
 /* Mobile font adjustments */
 @media (max-width: 768px) {
   :root {
-    --font-heading: 16px;
-    --font-body: 14px;
-    --font-meta: 12px;
+    --font-heading: 14px;
+    --font-body: 13px;
+    --font-meta: 11px;
   }
 }
 
 @media (max-width: 576px) {
   :root {
-    --font-heading: 18px;
-    --font-body: 15px;
-    --font-meta: 13px;
+    --font-heading: 16px;
+    --font-body: 14px;
+    --font-meta: 12px;
   }
 }
 
@@ -142,30 +142,30 @@ body.dark .project-text {
 
 @media (max-width: 850px) {
   .top-bar {
-    font-size: 9px;
+    font-size: 8px;
     padding: 3px var(--site-margin);
     white-space: nowrap;
-    overflow: hidden;
+    overflow: visible;
     text-overflow: ellipsis;
   }
 
   .top-bar .left,
   .top-bar .right {
-    font-size: 9px;
+    font-size: 8px;
     white-space: nowrap;
   }
 
   .top-bar .right a,
   .top-bar .right button {
-    font-size: 9px;
+    font-size: 8px;
     padding: 4px 6px;
     white-space: nowrap;
   }
 
   .top-bar .left .updated {
-    font-size: 9px;
+    font-size: 8px;
     white-space: nowrap;
-    max-width: 120px;
+    max-width: 110px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -269,6 +269,7 @@ body.dark .project-text {
   height: 100vh;
   z-index: 0;
   pointer-events: none;
+  background: transparent;
   transition: opacity 0.5s ease, filter 0.3s ease;
 }
 
@@ -278,9 +279,18 @@ body.dark .project-text {
   object-fit: cover;
   display: block;
   animation: fadeIn 0.5s ease-out;
-  opacity: 0.5;
+  opacity: 1;
   object-position: center 25%;
   transform: scale(1.1) translateY(-5%);
+  background: transparent;
+}
+
+body.hero-video-fallback .home-hero {
+  background: center / cover no-repeat url('../assets/home/Artboard 1.png');
+}
+
+body.hide-hero-safari .home-hero {
+  display: none !important;
 }
 
 body.project-open .home-hero {
@@ -1187,26 +1197,26 @@ video.loaded {
 ========================= */
 @media (max-width: 850px) {
   body {
-    font-size: 12px;
+    font-size: 11px;
   }
 
   .intro p {
-    font-size: clamp(9px, 2.5vw, 12px);
+    font-size: clamp(8px, 2.3vw, 11px);
     line-height: 1.4;
   }
 
   .site-bottom .copyright,
   .site-bottom .wip-repeat {
-    font-size: clamp(10px, 2.8vw, 13px);
+    font-size: clamp(9px, 2.5vw, 12px);
     line-height: 1.2;
   }
 
   .project-wrapper a {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .project-text {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .name {
@@ -1270,6 +1280,8 @@ video.loaded {
   .mobile-project-content {
     padding: 20px var(--site-margin);
     max-width: none;
+    overflow: visible;
+    position: relative;
   }
 
   /* Mobile project text styling - single column */
@@ -1288,6 +1300,10 @@ video.loaded {
 
   .mobile-project-content .detail-text.expanded {
     max-height: none;
+    overflow: visible;
+  }
+
+  .mobile-project-content .detail-col {
     overflow: visible;
   }
 
