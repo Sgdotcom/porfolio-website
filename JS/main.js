@@ -35,17 +35,24 @@ window.toggleDescription = function toggleDescription(button) {
       requestAnimationFrame(() => { detailText.style.transition = ''; });
     } else {
       detailText.style.overflow = 'hidden';
+      detailText.style.transition = 'none';
+      detailText.style.maxHeight = 'none';
+      const targetHeight = detailText.scrollHeight;
       detailText.style.maxHeight = '0px';
+      void detailText.offsetHeight;
+      detailText.style.transition = '';
       requestAnimationFrame(() => {
-        detailText.style.maxHeight = `${detailText.scrollHeight}px`;
+        detailText.style.maxHeight = `${targetHeight}px`;
       });
-      detailText._expandTimer = setTimeout(() => {
+      const onExpandTransitionEnd = (event) => {
+        if (event.propertyName !== 'max-height') return;
+        detailText.removeEventListener('transitionend', onExpandTransitionEnd);
         if (detailText.classList.contains('expanded')) {
           detailText.style.maxHeight = 'none';
           detailText.style.overflow = 'visible';
         }
-        detailText._expandTimer = null;
-      }, 360);
+      };
+      detailText.addEventListener('transitionend', onExpandTransitionEnd);
     }
   } else {
     if (needsSafariTouchFallback) {
@@ -197,6 +204,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const handleToggle = (event) => {
         event.preventDefault();
         event.stopPropagation();
+        const now = Date.now();
+        const lastToggleAt = Number(button.dataset.lastToggleAt || 0);
+        if (now - lastToggleAt < 250) return;
+        button.dataset.lastToggleAt = String(now);
         window.toggleDescription(button);
       };
       button.addEventListener('click', handleToggle);
