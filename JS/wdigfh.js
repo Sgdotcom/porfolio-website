@@ -119,6 +119,18 @@ const uiController = new UIController({
   statusElement
 });
 
+let hasFinalizedInitialLoad = false;
+
+function finalizeInitialLoad() {
+  if (hasFinalizedInitialLoad) return;
+  hasFinalizedInitialLoad = true;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      document.body.classList.remove('moodboard-loading');
+    });
+  });
+}
+
 uiController.setStatus(editMode ? 'Edit mode' : 'View mode');
 if (gridElement) gridElement.style.visibility = 'hidden';
 
@@ -236,6 +248,7 @@ fetch('assets/pictures-of/gallery.json')
     }
     safariDiagnostics.markEnd('initialStateBuild', { payloadCount: payload.length });
     safariDiagnostics.captureDomMediaStats();
+    finalizeInitialLoad();
   })
   .catch(() => {
     safariDiagnostics.markEnd('galleryFetch', { status: 'error' });
@@ -251,4 +264,5 @@ fetch('assets/pictures-of/gallery.json')
       if (gridElement) gridElement.style.visibility = '';
     });
     safariDiagnostics.captureDomMediaStats();
+    finalizeInitialLoad();
   });

@@ -762,23 +762,45 @@ video.loaded {
   position: absolute;
   top: 100%;
   left: 50%;
-  transform: translate(-50%, -15px);
-  width: 250px;
+  transform: translate(-50%, -8px);
+  width: 220px;
   max-width: 90vw;
-  background: rgba(255, 255, 255, 0.748);
-  backdrop-filter: blur(15px) saturate(180%);
-  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  border-radius: 6px;
   color: var(--text);
-  box-shadow: 0 10px 40px -10px rgba(0, 51, 255, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
-  padding: 16px;
-  margin-top: 10px;
+  gap: 8px;
+  padding: 12px 14px;
+  margin-top: 8px;
   opacity: 0;
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  transition: transform 0.2s ease, opacity 0.2s ease;
   pointer-events: none;
   z-index: 2000;
-  letter-spacing: 0.5px;
+  letter-spacing: 0;
+}
+
+#contact-overlay h2 {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+}
+
+#contact-overlay p {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--text) 84%, transparent);
+}
+
+#contact-overlay a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 24%, transparent);
 }
 
 #contact-overlay::before {
@@ -906,6 +928,61 @@ video.loaded {
 
 .home-project-section .hide-on-home {
   display: none !important;
+}
+
+/* Homepage feed simplification: 3 columns, max 2 rows of media */
+.home-project-section .photo-stack {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.home-project-section .photo-stack>*:nth-child(n + 7) {
+  display: none !important;
+}
+
+/* Enforce true 3x2 previews on homepage for these projects */
+.home-project-section[data-template-id="content-photography"] .photo-stack[data-sort-key="content-photography"] {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.home-project-section[data-template-id="content-cheiron"] .photo-stack>*,
+.home-project-section[data-template-id="content-plattan"] .photo-stack>*,
+.home-project-section[data-template-id="content-photography"] .photo-stack[data-sort-key="content-photography"]>* {
+  grid-column: span 1 !important;
+  width: 100% !important;
+  transform: none !important;
+}
+
+/* Plattan has two photo-stacks; keep only the first one on homepage */
+.home-project-section[data-template-id="content-plattan"] .photo-stack:nth-of-type(n + 2) {
+  display: none !important;
+}
+
+/* Homepage: show only first video in archive */
+.home-project-section[data-template-id="content-video"] .video-archive-item:nth-child(n + 2) {
+  display: none !important;
+}
+
+.home-project-section[data-template-id="content-video"] .video-archive-grid {
+  grid-template-columns: 1fr;
+}
+
+.home-project-section[data-template-id="content-video"] .video-archive-item {
+  grid-column: 1 / -1;
+}
+
+/* Homepage: prioritize video preview for these projects */
+.home-project-section[data-template-id="content-field-day"] .photo-stack {
+  display: none;
+}
+
+.home-project-section[data-template-id="content-dialogue"] .photo-stack>*:not(video) {
+  display: none !important;
+}
+
+.home-project-section[data-template-id="content-dialogue"] .photo-stack video {
+  display: block;
+  grid-column: 1 / -1;
 }
 
 /* Edit Mode Controls (Keep if needed) */

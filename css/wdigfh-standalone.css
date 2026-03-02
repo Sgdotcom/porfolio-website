@@ -17,6 +17,50 @@ body {
   color: var(--text);
 }
 
+.moodboard-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 400000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  opacity: 1;
+  transition: opacity 320ms ease;
+  pointer-events: auto;
+}
+
+.moodboard-loader-icon {
+  width: clamp(48px, 7vw, 90px);
+  height: auto;
+  opacity: 0;
+  animation: moodboardLoaderPulse 900ms ease-in-out infinite alternate;
+}
+
+body:not(.moodboard-loading) .moodboard-loader {
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.moodboard-loading .moodboard-grid {
+  opacity: 0;
+}
+
+body:not(.moodboard-loading) .moodboard-grid {
+  opacity: 1;
+  transition: opacity 240ms ease;
+}
+
+@keyframes moodboardLoaderPulse {
+  from {
+    opacity: 0.35;
+  }
+
+  to {
+    opacity: 0.95;
+  }
+}
+
 .hidden {
   display: none !important;
 }
