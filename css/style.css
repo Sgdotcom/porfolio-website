@@ -474,6 +474,27 @@ body.project-open .home-hero {
   height: 100%;
 }
 
+.video-archive-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px 14px;
+  width: 100%;
+}
+
+.video-archive-item {
+  margin: 0;
+}
+
+.video-archive-item .video-embed {
+  margin-bottom: 10px;
+}
+
+.video-archive-caption {
+  margin: 0;
+  font-size: var(--font-meta);
+  line-height: 1.4;
+}
+
 /* Two Column Grid used in Plattan etc */
 .grid-2-col {
   display: grid;
@@ -1328,6 +1349,11 @@ video.loaded {
   .mobile-project-content .grid-2-col {
     grid-template-columns: 1fr;
     gap: 10px;
+  }
+
+  .mobile-project-content .video-archive-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
   }
 
   .mobile-project-content .about-layout {
