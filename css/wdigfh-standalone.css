@@ -65,6 +65,18 @@ body:not(.moodboard-loading) .moodboard-grid {
   display: none !important;
 }
 
+.wdigfh-edit-link {
+  margin-left: 10px;
+  color: #9a9a9a;
+  text-decoration: none;
+  font-size: 11px;
+  transition: color 0.2s ease;
+}
+
+.wdigfh-edit-link:hover {
+  color: #7f7f7f;
+}
+
 .top-bar {
   background: rgba(255, 255, 255, 0.2);
   position: sticky;
