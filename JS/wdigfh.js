@@ -10,6 +10,7 @@ const gridElement = document.querySelector('.moodboard-grid');
 const controlsElement = document.getElementById('moodboard-controls');
 const statusElement = controlsElement?.querySelector('[data-status]');
 const loginOverlay = document.getElementById('edit-login-overlay');
+let hasFinalizedInitialLoad = false;
 
 const fallbackLayout = buildLayoutFromDom(gridElement, { forceSingleUnit: true });
 const layoutMap = fallbackLayout.reduce((acc, item) => {
@@ -104,6 +105,16 @@ const uiController = new UIController({
   statusElement
 });
 
+function finalizeInitialLoad() {
+  if (hasFinalizedInitialLoad) return;
+  hasFinalizedInitialLoad = true;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      document.body.classList.remove('moodboard-loading');
+    });
+  });
+}
+
 uiController.setStatus(editMode ? 'Edit mode' : 'View mode');
 
 const setUiEditMode = typeof uiController.setEditMode === 'function'
@@ -195,6 +206,7 @@ fetch('assets/pictures-of/gallery.json')
     const payload = combined.length ? attachLayoutHints(combined) : fallbackLayout;
     stateManager.loadState({ items: payload });
     gridEngine.normalizeLayout();
+    finalizeInitialLoad();
   })
   .catch(() => {
     // Keep text tiles; only strip media entries with no path/src.
@@ -204,4 +216,5 @@ fetch('assets/pictures-of/gallery.json')
     });
     stateManager.loadState({ items: fallback });
     gridEngine.normalizeLayout();
+    finalizeInitialLoad();
   });
