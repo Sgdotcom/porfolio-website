@@ -211,7 +211,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.toggleDescription(button);
       };
       button.addEventListener('click', handleToggle);
-      button.addEventListener('touchend', handleToggle, { passive: false });
       button.addEventListener('pointerup', handleToggle);
     });
   }
@@ -716,7 +715,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     if (contactLink) {
       contactLink.addEventListener('click', toggleContact);
-      contactLink.addEventListener('touchend', toggleContact, { passive: false });
     } else {
       // Fallback if markup changes and anchor is missing.
       contactWrapper.addEventListener('click', toggleContact);
