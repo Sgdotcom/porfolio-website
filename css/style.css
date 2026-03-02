@@ -304,12 +304,6 @@ body.project-open .home-hero {
   overflow: visible;
 }
 
-.project-wrapper.active .project-popout {
-  opacity: 0;
-  pointer-events: none;
-  display: none;
-}
-
 .project-wrapper a {
   font-size: 11px;
   text-decoration: none;
@@ -350,35 +344,6 @@ body.project-open .home-hero {
   margin-left: 20px;
   pointer-events: none;
 }
-
-.project-popout {
-  position: fixed;
-  top: var(--popout-top, 300px);
-  left: 20vw;
-  width: 80vw;
-  height: 450px;
-  z-index: 9999;
-  opacity: 0;
-  pointer-events: none !important;
-  transition: opacity 0.22s ease;
-  overflow: hidden;
-}
-
-.project-wrapper:hover .project-popout {
-  opacity: 1;
-}
-
-.project-popout img,
-.project-popout video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  opacity: 1;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
-}
-
 
 /* =========================
    PROJECT CONTENT STYLES
@@ -461,6 +426,27 @@ body.project-open .home-hero {
   left: 0;
   width: 100%;
   height: 100%;
+}
+
+.video-archive-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px 14px;
+  width: 100%;
+}
+
+.video-archive-item {
+  margin: 0;
+}
+
+.video-archive-item .video-embed {
+  margin-bottom: 10px;
+}
+
+.video-archive-caption {
+  margin: 0;
+  font-size: var(--font-meta);
+  line-height: 1.4;
 }
 
 /* Two Column Grid used in Plattan etc */
@@ -1089,32 +1075,6 @@ video.loaded {
     overflow: hidden;
   }
 
-  /* LANDING POPOUT (Homepage Preview Positioning) */
-  body:not(.project-open) .project-popout {
-    position: fixed;
-    left: 326px !important;
-    width: calc(100vw - 366px) !important;
-    top: 100px;
-    height: 70vh;
-    max-height: none;
-    margin-top: 0;
-    z-index: 999;
-    opacity: 0;
-    overflow: hidden;
-    pointer-events: none;
-    transition: opacity 0.25s ease;
-  }
-
-  body:not(.project-open) .project-wrapper:hover .project-popout {
-    opacity: 1;
-  }
-
-  body:not(.project-open) .project-popout img,
-  body:not(.project-open) .project-popout video {
-    height: 100%;
-    object-fit: cover;
-  }
-
   /* PROJECT OPEN STATE (Sidebar) */
   body:not(.project-open) .split-layout,
   body.project-open .split-layout {
@@ -1193,24 +1153,6 @@ video.loaded {
     letter-spacing: 0.03em;
     color: #6e6e6e;
     text-transform: uppercase;
-  }
-
-  /* POPOUT IN SIDEBAR MODE */
-  body.project-open .project-popout {
-    position: fixed;
-    left: 326px !important;
-    width: calc(100vw - 366px) !important;
-    top: 100px;
-    height: 70vh;
-    max-height: none;
-    margin-top: 0;
-    z-index: 999;
-    opacity: 0;
-  }
-
-  body.project-open .project-wrapper:hover .project-popout {
-    opacity: 1;
-    margin-top: 0;
   }
 
   /* Desktop Staggered Logic for Photography */
@@ -1387,6 +1329,11 @@ video.loaded {
   .mobile-project-content .grid-2-col {
     grid-template-columns: 1fr;
     gap: 10px;
+  }
+
+  .mobile-project-content .video-archive-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
   }
 
   .mobile-project-content .about-layout {

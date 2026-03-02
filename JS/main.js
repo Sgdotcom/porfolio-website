@@ -18,7 +18,6 @@ window.toggleDescription = function toggleDescription(button) {
 document.addEventListener('DOMContentLoaded', () => {
   const CONFIG = {
     mobileBreakpoint: 850,
-    popoutOffset: -10,
     lazyRootMargin: '400px',
     homepageHydrationRootMargin: '900px 0px',
     homepageMarkerY: 140,
@@ -804,9 +803,6 @@ document.addEventListener('DOMContentLoaded', () => {
       detailText.style.marginTop = '';
     }
 
-    const popout = dom.query('.project-popout', wrapper);
-    if (popout) popout.style.opacity = '0';
-
     const toggleButton = dom.query('.toggle-btn', wrapper);
     if (toggleButton) toggleButton.textContent = 'Show More +';
 
@@ -822,15 +818,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (wrapper === exceptWrapper) return;
       resetProjectDetails(wrapper);
     });
-  }
-
-  function alignPopoutToFirstProject() {
-    const firstLink = dom.query('.project-wrapper:first-child a');
-    if (!firstLink) return;
-
-    const rect = firstLink.getBoundingClientRect();
-    const top = rect.top + CONFIG.popoutOffset;
-    document.documentElement.style.setProperty('--popout-top', `${top}px`);
   }
 
   function openDesktopProject(wrapper, link) {
@@ -933,33 +920,6 @@ document.addEventListener('DOMContentLoaded', () => {
     enableTextEditing(content);
   }
 
-  function initProjectHoverPreview() {
-    projectWrappers.forEach((wrapper) => {
-      const popout = dom.query('.project-popout', wrapper);
-      const mediaElement = dom.query('.project-popout img, .project-popout video', wrapper);
-      const link = dom.query('a[data-template]', wrapper);
-      const previewSource = link ? link.getAttribute('data-image') : null;
-
-      if (!popout || !mediaElement || !previewSource) return;
-
-      wrapper.addEventListener('mouseenter', () => {
-        if (!env.isDesktopViewport() || wrapper.classList.contains('active')) return;
-
-        mediaElement.src = previewSource;
-        if (mediaElement.tagName === 'VIDEO') {
-          mediaElement.play().catch(() => { /* Ignore autoplay errors. */ });
-        }
-
-        popout.style.opacity = '1';
-      });
-
-      wrapper.addEventListener('mouseleave', () => {
-        popout.style.opacity = '0';
-        if (mediaElement.tagName === 'VIDEO') mediaElement.pause();
-      });
-    });
-  }
-
   function initProjectNavigationEvents() {
     if (!rightSide) return;
 
@@ -1007,12 +967,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function initProjectSystem() {
-    alignPopoutToFirstProject();
     renderHomepageFeed();
-    initProjectHoverPreview();
     initProjectNavigationEvents();
 
-    window.addEventListener('resize', alignPopoutToFirstProject);
     window.addEventListener('resize', renderHomepageFeed);
     window.addEventListener('resize', scheduleHomepageActiveUpdate);
     window.addEventListener('scroll', scheduleHomepageActiveUpdate, { passive: true });
