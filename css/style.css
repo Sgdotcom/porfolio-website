@@ -661,6 +661,7 @@ video.loaded {
 }
 
 
+/* Desktop: text left, photo right */
 .about-layout {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -1458,6 +1459,12 @@ video.loaded {
 
 /* Desktop overrides to restore original functionality */
 @media (min-width: 851px) {
+  /* About Me: keep photo on the right (mobile keeps single-column layout) */
+  .content-enter .about-layout {
+    grid-template-columns: 2fr 1fr;
+    gap: 40px;
+  }
+
   .project-wrapper {
     border: none;
     border-radius: 0;
