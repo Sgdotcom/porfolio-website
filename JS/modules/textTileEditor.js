@@ -6,6 +6,58 @@
 
 const DEFAULT_FONT_SIZE = 16;
 
+/**
+ * Basic HTML sanitizer to prevent XSS while allowing essential formatting tags.
+ * Allows: <b>, <i>, <u>, <strong>, <em>, <br>, <div>, <span> (with style="font-size:...")
+ */
+function sanitizeHtml(html) {
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  const fragment = template.content;
+  const allowedTags = ['B', 'I', 'U', 'STRONG', 'EM', 'BR', 'DIV', 'SPAN', 'P', 'UL', 'OL', 'LI'];
+
+  const sanitizeNode = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) return;
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      node.remove();
+      return;
+    }
+
+    if (!allowedTags.includes(node.tagName)) {
+      // Keep text content of disallowed tags but remove the tags themselves
+      while (node.firstChild) {
+        node.parentNode.insertBefore(node.firstChild, node);
+      }
+      node.remove();
+      return; // Return early as node is removed
+    }
+
+    // Remove all attributes except 'style' on SPAN (for font-size) or DIV/P (for alignment via CMS)
+    const attrs = Array.from(node.attributes);
+    for (const attr of attrs) {
+      if (attr.name === 'style') {
+        const safeStyles = ['font-size', 'color', 'text-align'];
+        const styles = attr.value.split(';').map(s => s.trim()).filter(s => {
+          if (!s) return false;
+          const prop = s.split(':')[0].toLowerCase();
+          return safeStyles.includes(prop);
+        });
+        if (styles.length) node.setAttribute('style', styles.join('; '));
+        else node.removeAttribute('style');
+      } else {
+        node.removeAttribute(attr.name);
+      }
+    }
+
+    // Sanitize children
+    const children = Array.from(node.childNodes);
+    children.forEach(sanitizeNode);
+  };
+
+  Array.from(fragment.childNodes).forEach(sanitizeNode);
+  return template.innerHTML;
+}
+
 /** True if content looks like HTML (e.g. contains tags). */
 export function isHtmlContent(content) {
   if (typeof content !== 'string') return false;
@@ -19,12 +71,13 @@ export function getEditorContent(editorEl) {
 
 /**
  * Set editor content. Backward compatible: if content has no tags, set as plain text.
+ * SECURITY: Sanitizes HTML before insertion to prevent XSS.
  */
 export function setEditorContent(editorEl, content) {
   if (!editorEl) return;
   const raw = (content ?? '').trim();
   if (isHtmlContent(raw)) {
-    editorEl.innerHTML = raw;
+    editorEl.innerHTML = sanitizeHtml(raw);
   } else {
     editorEl.textContent = raw;
   }
@@ -42,7 +95,7 @@ function saveSelectionToEditor(editorEl) {
   if (!editorEl.contains(range.commonAncestorContainer)) return;
   try {
     editorEl._savedRange = range.cloneRange();
-  } catch (_) {}
+  } catch (_) { }
 }
 
 /**

@@ -49,3 +49,22 @@ FileETag MTime Size
 <IfModule mod_headers.c>
   Header set Connection keep-alive
 </IfModule>
+
+# SECURITY HEADERS
+<IfModule mod_headers.c>
+  # Content Security Policy (CSP)
+  # Allows self, GitHub API, and safe data/https sources for media.
+  Header set Content-Security-Policy "default-src 'self'; script-src 'self' https://api.github.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*; connect-src 'self' https://api.github.com;"
+
+  # Prevent sniffing of content types
+  Header set X-Content-Type-Options "nosniff"
+
+  # Prevent Clickjacking
+  Header set X-Frame-Options "SAMEORIGIN"
+
+  # Enable HSTS (Strict-Transport-Security) - assumes SSL is used
+  Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+  # Control Referrer information
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
