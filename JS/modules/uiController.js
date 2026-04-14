@@ -1,7 +1,27 @@
 import { StateManager } from './stateManager.js';
 
-// Safely encode large binary files (images) to Base64 without call stack overflow
-async function fileToBase64(file) {
+const CMS_IMAGE_MAX_DIMENSION = 2200;
+const CMS_IMAGE_WEBP_QUALITY = 0.78;
+
+function getFileExtension(filename = '') {
+  const match = filename.toLowerCase().match(/\.([a-z0-9]+)$/i);
+  return match ? match[1] : 'bin';
+}
+
+function sanitizeFileStem(filename = '') {
+  const withoutExt = filename.replace(/\.[^.]+$/, '');
+  const safe = withoutExt.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  return safe || 'upload';
+}
+
+function createUploadTargetPath(itemId, fileName, extension) {
+  const safeId = itemId.replace(/[^a-zA-Z0-9_-]/g, '');
+  const safeName = sanitizeFileStem(fileName);
+  const safeExt = (extension || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
+  return `assets/uploads/${safeId}-${safeName}.${safeExt}`;
+}
+
+async function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -11,8 +31,66 @@ async function fileToBase64(file) {
       resolve(base64String);
     };
     reader.onerror = reject;
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(blob);
   });
+}
+
+async function optimizeImageForUpload(file) {
+  const mimeType = (file.type || '').toLowerCase();
+  const originalExtension = getFileExtension(file.name);
+
+  if (!mimeType.startsWith('image/')) {
+    return { blob: file, extension: originalExtension };
+  }
+
+  // Keep SVG and GIF in original format (vector/animation).
+  if (mimeType === 'image/svg+xml' || mimeType === 'image/gif') {
+    return { blob: file, extension: originalExtension };
+  }
+
+  try {
+    const objectUrl = URL.createObjectURL(file);
+    const image = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = objectUrl;
+    });
+
+    const sourceWidth = image.naturalWidth || image.width;
+    const sourceHeight = image.naturalHeight || image.height;
+    const scale = Math.min(1, CMS_IMAGE_MAX_DIMENSION / Math.max(sourceWidth, sourceHeight));
+    const targetWidth = Math.max(1, Math.round(sourceWidth * scale));
+    const targetHeight = Math.max(1, Math.round(sourceHeight * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+
+    const context = canvas.getContext('2d', { alpha: false });
+    if (!context) {
+      URL.revokeObjectURL(objectUrl);
+      return { blob: file, extension: originalExtension };
+    }
+
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
+    context.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+    const webpBlob = await new Promise((resolve) => {
+      canvas.toBlob(resolve, 'image/webp', CMS_IMAGE_WEBP_QUALITY);
+    });
+
+    URL.revokeObjectURL(objectUrl);
+
+    if (!webpBlob) {
+      return { blob: file, extension: originalExtension };
+    }
+
+    return { blob: webpBlob, extension: 'webp' };
+  } catch (error) {
+    return { blob: file, extension: originalExtension };
+  }
 }
 
 // Safely encode Unicode text (like emojis, Å, Ä, Ö) to Base64
@@ -274,9 +352,13 @@ export class UIController {
     try {
       for (const item of items) {
         if (item.pendingFile) {
-          const targetPath = `assets/uploads/${item.id.replace(/[^a-zA-Z0-9_-]/g, '')}-${item.pendingFile.name}`.replace(/\s+/g, '-');
-          // Use safe async base64 encoding
-          const base64 = await fileToBase64(item.pendingFile);
+          const optimizedAsset = await optimizeImageForUpload(item.pendingFile);
+          const targetPath = createUploadTargetPath(
+            item.id,
+            item.pendingFile.name,
+            optimizedAsset.extension
+          );
+          const base64 = await blobToBase64(optimizedAsset.blob);
           await this.apiManager.uploadImage(targetPath, base64);
           this.stateManager.updateItem(item.id, {
             path: targetPath,
